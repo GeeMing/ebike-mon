@@ -1,0 +1,1 @@
+pushd _build && cmake .. && cmake --build . -- -j12
