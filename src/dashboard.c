@@ -105,7 +105,7 @@ void dashboard_set_power(int w) {
   int abs_v = v < 0 ? -v : v;
   int whole = (int)(abs_v / 1000);
   int frac = (int)(abs_v % 1000);
-  snprintf(buf, sizeof(buf), "%c%d.%03d kW", v < 0 ? '-' : '+', whole, frac);
+  snprintf(buf, sizeof(buf), "%c%d.%03d kW", v < 0 ? '-' : ' ', whole, frac);
   lv_label_set_text(energy_bar_label, buf);
 
   int left_value = 0;
