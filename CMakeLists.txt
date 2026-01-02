@@ -75,6 +75,7 @@ file(GLOB MAIN_SOURCES
     "${PROJECT_SOURCE_DIR}/src/*.c"
     "${PROJECT_SOURCE_DIR}/src/hal/*.c"
     "${PROJECT_SOURCE_DIR}/fonts/out/*.c"
+    "${PROJECT_SOURCE_DIR}/img/*.c"
 )
 # Remove main.c and freertos_main.c from glob results (they're added conditionally)
 list(REMOVE_ITEM MAIN_SOURCES
