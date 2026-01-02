@@ -10,6 +10,9 @@
 #include "left.h"
 #include "right.h"
 
+/* Declare custom font */
+LV_FONT_DECLARE(lv_font_pf_din_mono_30)
+
 /* Global screen size constants */
 const lv_coord_t SCREEN_W = 480;
 const lv_coord_t SCREEN_H = 272;
@@ -247,7 +250,7 @@ static void draw_energy_bar(lv_obj_t* scr) {
     lv_obj_align(energy_bar_label, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_color(energy_bar_label, lv_color_hex(0x000000), 0);
     /* Make the label larger and keep it above the fill rectangles */
-    lv_obj_set_style_text_font(energy_bar_label, &lv_font_montserrat_30, 0);
+    lv_obj_set_style_text_font(energy_bar_label, &lv_font_pf_din_mono_30, 0);
     lv_obj_clear_flag(energy_bar_label, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_move_foreground(energy_bar_label);
 

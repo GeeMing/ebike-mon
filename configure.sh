@@ -7,3 +7,4 @@ cmake -S . -B _build  -G "MinGW Makefiles"  \
 
 # vcpkg 安装sdl
 # vcpkg install sdl2:x64-mingw-dynamic
+

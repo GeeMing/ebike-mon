@@ -69,7 +69,18 @@ add_compile_definitions($<$<BOOL:${LV_USE_FFMPEG}>:LV_USE_FFMPEG=1>)
 add_subdirectory(lvgl)
 target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR} ${SDL2_INCLUDE_DIRS})
 
-set(MAIN_SOURCES src/mouse_cursor_icon.c src/hal/hal.c src/lv_os_stub.c src/dashboard.c src/left.c src/right.c)
+# Collect source files using file(GLOB)
+# Exclude main.c and freertos_main.c as they are conditionally added later
+file(GLOB MAIN_SOURCES
+    "${PROJECT_SOURCE_DIR}/src/*.c"
+    "${PROJECT_SOURCE_DIR}/src/hal/*.c"
+    "${PROJECT_SOURCE_DIR}/fonts/out/*.c"
+)
+# Remove main.c and freertos_main.c from glob results (they're added conditionally)
+list(REMOVE_ITEM MAIN_SOURCES
+    "${PROJECT_SOURCE_DIR}/src/main.c"
+    "${PROJECT_SOURCE_DIR}/src/freertos_main.c"
+)
 set(MAIN_LIBS lvgl lvgl::examples lvgl::demos lvgl::thorvg ${SDL2_LIBRARIES})
 
 # Create the main executable, depending on the FreeRTOS option
