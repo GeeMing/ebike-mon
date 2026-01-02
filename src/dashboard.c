@@ -12,6 +12,8 @@
 
 /* Declare custom font */
 LV_FONT_DECLARE(lv_font_pf_din_mono_30)
+// LV_FONT_DECLARE(lv_font_jetbrains_mono_30)
+LV_FONT_DECLARE(lv_font_jetbrains_mono_26)
 
 /* Global screen size constants */
 const lv_coord_t SCREEN_W = 480;
@@ -276,7 +278,7 @@ static void draw_current_time(lv_obj_t* scr) {
 
 /* Small helper to create a title/value pair at (x,y) */
 static void create_kv_pair(lv_obj_t* parent, lv_obj_t** title_out, lv_obj_t** value_out, const char* title, const char* value, lv_coord_t x, lv_coord_t y) {
-    int title_value_spacing = 12;
+    int title_value_spacing = 14;
 
     *title_out = lv_label_create(parent);
     lv_label_set_text(*title_out, title);
@@ -289,7 +291,7 @@ static void create_kv_pair(lv_obj_t* parent, lv_obj_t** title_out, lv_obj_t** va
     lv_label_set_text(*value_out, value);
     lv_obj_set_style_text_color(*value_out, lv_color_hex(0x000000), 0);
     /* larger value font */
-    lv_obj_set_style_text_font(*value_out, &lv_font_montserrat_26, 0);
+    lv_obj_set_style_text_font(*value_out, &lv_font_jetbrains_mono_26, 0);
     /* smaller gap between title and value */
     lv_obj_set_pos(*value_out, x, y + title_value_spacing);
 }

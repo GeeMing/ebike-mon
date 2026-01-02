@@ -29,5 +29,6 @@ gen_font () {
         # --symbols "0123456789.-+%kmWhAV " \
 }
 
-gen_font "JetBrainsMonoNL-SemiBold.ttf" 30 lv_font_jetbrains_mono_30
+gen_font "JetBrainsMonoNL-SemiBold.ttf" 26 lv_font_jetbrains_mono_26
+# gen_font "JetBrainsMonoNL-SemiBold.ttf" 30 lv_font_jetbrains_mono_30
 gen_font "PF Din Mono.ttf"              30 lv_font_pf_din_mono_30
