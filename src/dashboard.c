@@ -13,6 +13,7 @@
 LV_FONT_DECLARE(lv_font_pf_din_mono_30)
 // LV_FONT_DECLARE(lv_font_jetbrains_mono_30)
 LV_FONT_DECLARE(lv_font_jetbrains_mono_26)
+LV_FONT_DECLARE(lv_font_jetbrains_mono_36)
 
 /* Global screen size constants */
 const lv_coord_t SCREEN_W = 480;
@@ -82,8 +83,14 @@ static void time_timer_cb(lv_timer_t *t) {
   time_t now = time(NULL);
   struct tm *tm_now = localtime(&now);
   char buf[32];
+  static bool toggle = false;
+  toggle = !toggle;
   if (tm_now) {
-    snprintf(buf, sizeof(buf), "%02d:%02d", tm_now->tm_hour, tm_now->tm_min);
+    if (toggle) {
+      snprintf(buf, sizeof(buf), "%02d:%02d", tm_now->tm_hour, tm_now->tm_min);
+    } else {
+      snprintf(buf, sizeof(buf), "%02d %02d", tm_now->tm_hour, tm_now->tm_min);
+    }
     lv_label_set_text(time_label, buf);
   }
 }
@@ -160,6 +167,40 @@ static void energy_anim_timer_cb(lv_timer_t *t) {
   dashboard_set_power(v);
 }
 
+static void update_icons_timer_cb(lv_timer_t *t) {
+  static bool toggle = false;
+  static uint32_t state = 0;
+  toggle = !toggle;
+  state++;
+
+  if (state > 20) {
+    state = 0;
+  }
+
+  lv_obj_set_style_img_opa(left_turn_icon, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_img_opa(right_turn_icon, LV_OPA_TRANSP, 0);
+
+  if (state < 10) {
+    if (toggle) {
+      lv_obj_set_style_img_opa(left_turn_icon, LV_OPA_TRANSP, 0);
+    } else {
+      lv_obj_set_style_img_opa(left_turn_icon, LV_OPA_COVER, 0);
+    }
+  } else if (state < 20) {
+    if (toggle) {
+      lv_obj_set_style_img_opa(right_turn_icon, LV_OPA_TRANSP, 0);
+    } else {
+      lv_obj_set_style_img_opa(right_turn_icon, LV_OPA_COVER, 0);
+    }
+  }
+
+  if (state % 12 > 6) {
+    lv_obj_set_style_img_opa(high_beam_icon, LV_OPA_TRANSP, 0);
+  } else {
+    lv_obj_set_style_img_opa(high_beam_icon, LV_OPA_COVER, 0);
+  }
+}
+
 /* Draw top-left and top-right icons */
 static void draw_icons(lv_obj_t *scr) {
 
@@ -187,8 +228,9 @@ static void draw_icons(lv_obj_t *scr) {
   lv_obj_move_foreground(left_turn_icon);
   lv_obj_move_foreground(high_beam_icon);
   lv_obj_move_foreground(right_turn_icon);
-}
 
+  lv_timer_create(update_icons_timer_cb, 500, NULL);
+}
 /* Draw vertical separators at left_x and right_x */
 static void draw_separators(lv_obj_t *scr) {
   /* Compute layout and draw separators */
@@ -291,10 +333,11 @@ static void draw_current_time(lv_obj_t *scr) {
   lv_obj_align(time_label, LV_ALIGN_TOP_MID, 0, 2);
   lv_obj_set_style_text_color(time_label, lv_color_hex(0x000000), 0);
   /* larger clock font */
-  lv_obj_set_style_text_font(time_label, &lv_font_montserrat_36, 0);
+  // lv_obj_set_style_text_font(time_label, &lv_font_montserrat_36, 0);
+  lv_obj_set_style_text_font(time_label, &lv_font_jetbrains_mono_36, 0);
   // lv_obj_set_scrollbar_mode(time_label, LV_SCROLLBAR_MODE_OFF);
 
-  lv_timer_create(time_timer_cb, 1000, NULL);
+  lv_timer_create(time_timer_cb, 500, NULL);
 }
 
 /* Small helper to create a title/value pair at (x,y) */
