@@ -179,21 +179,21 @@ static void draw_separators(lv_obj_t* scr) {
     const lv_coord_t mid_w     = ENERGY_BAR_W;
     const lv_coord_t left_x    = (SCREEN_W - mid_w - line_size) / 2 - padding;
     const lv_coord_t right_x   = left_x + mid_w + padding * 2;
+    const lv_coord_t top_h     = 40;
 
     lv_obj_t* line1 = lv_obj_create(scr);
-    lv_obj_set_size(line1, line_size, SCREEN_H);
+    lv_obj_set_size(line1, line_size, SCREEN_H - top_h);
     lv_obj_set_style_bg_color(line1, lv_color_hex(0x888888), 0);
     lv_obj_set_style_border_width(line1, 0, 0);
-    lv_obj_set_pos(line1, left_x, 0);
+            lv_obj_set_pos(line1, left_x, top_h);
 
     lv_obj_t* line2 = lv_obj_create(scr);
-    lv_obj_set_size(line2, line_size, SCREEN_H);
+    lv_obj_set_size(line2, line_size, SCREEN_H - top_h);
     lv_obj_set_style_bg_color(line2, lv_color_hex(0x888888), 0);
     lv_obj_set_style_border_width(line2, 0, 0);
-    lv_obj_set_pos(line2, right_x, 0);
+    lv_obj_set_pos(line2, right_x, top_h);
 
-    const lv_coord_t top_h    = 40;
-    lv_obj_t*        top_line = lv_obj_create(scr);
+    lv_obj_t* top_line = lv_obj_create(scr);
     lv_obj_set_size(top_line, SCREEN_W, line_size);
     lv_obj_set_style_bg_color(top_line, lv_color_hex(0x888888), 0);
     lv_obj_set_style_border_width(top_line, 0, 0);
