@@ -5,6 +5,7 @@
 
 #include "dashboard.h"
 #include "../img/icons.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
@@ -33,6 +34,23 @@ static lv_obj_t *battery_bar;
 static lv_obj_t *battery_label;
 static lv_obj_t *range_label;
 static lv_obj_t *gear_label;
+
+/* Theme state */
+static bool dashboard_night_mode;
+static lv_color_t theme_bg;
+static lv_color_t theme_text_main;
+static lv_color_t theme_text_dim;
+static lv_color_t theme_line;
+static lv_color_t theme_border;
+static lv_color_t theme_text_alert;
+static lv_color_t theme_needle;
+
+static lv_obj_t *scr_root;
+static lv_obj_t *sep_line_left;
+static lv_obj_t *sep_line_right;
+static lv_obj_t *sep_line_top;
+static lv_obj_t *zero_line;
+static lv_obj_t *meter_center_circle;
 
 /* Left panel labels */
 static lv_obj_t *left_odo_title;
@@ -74,6 +92,114 @@ static const int32_t ENERGY_MIN_W = -2000;
 static const int32_t ENERGY_MAX_W = 6000;
 static const int32_t ENERGY_BAR_W = 200;
 static const int32_t ENERGY_BAR_H = 50;
+
+static void dashboard_apply_theme(void) {
+  if (dashboard_night_mode) {
+    theme_bg = lv_color_hex(0x111418);
+    theme_text_main = lv_color_hex(0xE6E6E6);
+    theme_text_dim = lv_color_hex(0x9AA0A6);
+    theme_line = lv_color_hex(0x3A3F45);
+    theme_border = lv_color_hex(0xC8C8C8);
+    theme_text_alert = lv_palette_main(LV_PALETTE_RED);
+    theme_needle = lv_color_hex(0xB0B0B0);
+  } else {
+    theme_bg = lv_color_hex(0xFFFFFF);
+    theme_text_main = lv_color_hex(0x000000);
+    theme_text_dim = lv_color_hex(0x666666);
+    theme_line = lv_color_hex(0x888888);
+    theme_border = lv_color_hex(0x000000);
+    theme_text_alert = lv_palette_main(LV_PALETTE_RED);
+    theme_needle = lv_palette_main(LV_PALETTE_GREY);
+  }
+
+  if (scr_root) {
+    lv_obj_set_style_bg_color(scr_root, theme_bg, 0);
+    lv_obj_set_style_bg_opa(scr_root, LV_OPA_COVER, 0);
+  }
+
+  if (sep_line_left)
+    lv_obj_set_style_bg_color(sep_line_left, theme_line, 0);
+  if (sep_line_right)
+    lv_obj_set_style_bg_color(sep_line_right, theme_line, 0);
+  if (sep_line_top)
+    lv_obj_set_style_bg_color(sep_line_top, theme_line, 0);
+
+  if (time_label)
+    lv_obj_set_style_text_color(time_label, theme_text_main, 0);
+
+  if (left_odo_title)
+    lv_obj_set_style_text_color(left_odo_title, theme_text_dim, 0);
+  if (left_trip_title)
+    lv_obj_set_style_text_color(left_trip_title, theme_text_dim, 0);
+  if (left_ride_time_title)
+    lv_obj_set_style_text_color(left_ride_time_title, theme_text_dim, 0);
+  if (left_max_speed_title)
+    lv_obj_set_style_text_color(left_max_speed_title, theme_text_dim, 0);
+  if (left_used_title)
+    lv_obj_set_style_text_color(left_used_title, theme_text_dim, 0);
+
+  if (left_odo_value)
+    lv_obj_set_style_text_color(left_odo_value, theme_text_main, 0);
+  if (left_trip_value)
+    lv_obj_set_style_text_color(left_trip_value, theme_text_main, 0);
+  if (left_ride_time_value)
+    lv_obj_set_style_text_color(left_ride_time_value, theme_text_main, 0);
+  if (left_max_speed_value)
+    lv_obj_set_style_text_color(left_max_speed_value, theme_text_main, 0);
+  if (left_used_value)
+    lv_obj_set_style_text_color(left_used_value, theme_text_main, 0);
+
+  if (right_batt_title)
+    lv_obj_set_style_text_color(right_batt_title, theme_text_dim, 0);
+  if (right_range_title)
+    lv_obj_set_style_text_color(right_range_title, theme_text_dim, 0);
+  if (right_maxp_title)
+    lv_obj_set_style_text_color(right_maxp_title, theme_text_dim, 0);
+  if (right_hist_avg_title)
+    lv_obj_set_style_text_color(right_hist_avg_title, theme_text_dim, 0);
+  if (right_1min_avg_title)
+    lv_obj_set_style_text_color(right_1min_avg_title, theme_text_dim, 0);
+
+  if (right_batt_cap_value)
+    lv_obj_set_style_text_color(right_batt_cap_value, theme_text_main, 0);
+  if (right_est_range_value)
+    lv_obj_set_style_text_color(right_est_range_value, theme_text_main, 0);
+  if (right_maxp_value)
+    lv_obj_set_style_text_color(right_maxp_value, theme_text_main, 0);
+  if (right_hist_avg_value)
+    lv_obj_set_style_text_color(right_hist_avg_value, theme_text_main, 0);
+  if (right_1min_avg_value)
+    lv_obj_set_style_text_color(right_1min_avg_value, theme_text_main, 0);
+
+  if (energy_bar_cont)
+    lv_obj_set_style_border_color(energy_bar_cont, theme_border, 0);
+  if (energy_bar_label)
+    lv_obj_set_style_text_color(energy_bar_label, theme_text_main, 0);
+  if (zero_line)
+    lv_obj_set_style_bg_color(zero_line, theme_line, 0);
+
+  if (meter_center_circle)
+    lv_obj_set_style_bg_color(meter_center_circle, theme_bg, 0);
+  if (meter_center_label)
+    lv_obj_set_style_text_color(meter_center_label, theme_text_main, 0);
+  if (meter_unit_label)
+    lv_obj_set_style_text_color(meter_unit_label, theme_text_dim, 0);
+
+  if (meter_widget) {
+    lv_obj_set_style_arc_color(meter_widget, theme_line, LV_PART_MAIN);
+    lv_obj_set_style_line_color(meter_widget, theme_line, LV_PART_ITEMS);
+    lv_obj_set_style_line_color(meter_widget, theme_line, LV_PART_INDICATOR);
+    lv_obj_set_style_text_color(meter_widget, theme_text_dim, LV_PART_MAIN);
+  }
+
+  if (meter_needle_line)
+    lv_obj_set_style_line_color(meter_needle_line, theme_needle, LV_PART_MAIN);
+}
+
+void dashboard_set_night_mode(bool enable) {
+  dashboard_night_mode = enable;
+  dashboard_apply_theme();
+}
 
 /* Simple helper to create a small colored circle used for indicators */
 static lv_obj_t *create_circle(lv_obj_t *parent, lv_color_t color,
@@ -206,9 +332,9 @@ static void meter_anim_timer_cb(lv_timer_t *t) {
 
     /* Change color to red if speed exceeds 60 */
     if (v > 60) {
-      lv_obj_set_style_text_color(meter_center_label, lv_palette_main(LV_PALETTE_RED), 0);
+      lv_obj_set_style_text_color(meter_center_label, theme_text_alert, 0);
     } else {
-      lv_obj_set_style_text_color(meter_center_label, lv_color_hex(0x000000), 0);
+      lv_obj_set_style_text_color(meter_center_label, theme_text_main, 0);
     }
   }
 }
@@ -287,23 +413,23 @@ static void draw_separators(lv_obj_t *scr) {
   const lv_coord_t right_x = left_x + mid_w + padding * 2;
   const lv_coord_t top_h = 40;
 
-  lv_obj_t *line1 = lv_obj_create(scr);
-  lv_obj_set_size(line1, line_size, SCREEN_H - top_h);
-  lv_obj_set_style_bg_color(line1, lv_color_hex(0x888888), 0);
-  lv_obj_set_style_border_width(line1, 0, 0);
-  lv_obj_set_pos(line1, left_x, top_h);
+  sep_line_left = lv_obj_create(scr);
+  lv_obj_set_size(sep_line_left, line_size, SCREEN_H - top_h);
+  lv_obj_set_style_bg_color(sep_line_left, lv_color_hex(0x888888), 0);
+  lv_obj_set_style_border_width(sep_line_left, 0, 0);
+  lv_obj_set_pos(sep_line_left, left_x, top_h);
 
-  lv_obj_t *line2 = lv_obj_create(scr);
-  lv_obj_set_size(line2, line_size, SCREEN_H - top_h);
-  lv_obj_set_style_bg_color(line2, lv_color_hex(0x888888), 0);
-  lv_obj_set_style_border_width(line2, 0, 0);
-  lv_obj_set_pos(line2, right_x, top_h);
+  sep_line_right = lv_obj_create(scr);
+  lv_obj_set_size(sep_line_right, line_size, SCREEN_H - top_h);
+  lv_obj_set_style_bg_color(sep_line_right, lv_color_hex(0x888888), 0);
+  lv_obj_set_style_border_width(sep_line_right, 0, 0);
+  lv_obj_set_pos(sep_line_right, right_x, top_h);
 
-  lv_obj_t *top_line = lv_obj_create(scr);
-  lv_obj_set_size(top_line, SCREEN_W, line_size);
-  lv_obj_set_style_bg_color(top_line, lv_color_hex(0x888888), 0);
-  lv_obj_set_style_border_width(top_line, 0, 0);
-  lv_obj_set_pos(top_line, 0, top_h);
+  sep_line_top = lv_obj_create(scr);
+  lv_obj_set_size(sep_line_top, SCREEN_W, line_size);
+  lv_obj_set_style_bg_color(sep_line_top, lv_color_hex(0x888888), 0);
+  lv_obj_set_style_border_width(sep_line_top, 0, 0);
+  lv_obj_set_pos(sep_line_top, 0, top_h);
 }
 
 /* Draw energy bar at bottom center (only border and centered label) */
@@ -351,7 +477,7 @@ static void draw_energy_bar(lv_obj_t *scr) {
   lv_obj_clear_flag(energy_bar_right, LV_OBJ_FLAG_SCROLLABLE);
 
   // 0刻度地方 画一条竖线
-  lv_obj_t *zero_line = lv_obj_create(energy_bar_cont);
+  zero_line = lv_obj_create(energy_bar_cont);
   lv_obj_set_size(zero_line, 5, ENERGY_BAR_H);
   lv_obj_set_style_bg_color(zero_line, lv_color_hex(0xAAAAAA), 0); // gray color
   lv_obj_set_style_border_width(zero_line, 0, 0);
@@ -510,19 +636,19 @@ void draw_meter(lv_obj_t *scr)
     lv_scale_set_line_needle_value(meter, needle_line, -10, 0);
 
     /* Create a circle to cover the center area and hide the needle's center part */
-    lv_obj_t * center_circle = lv_obj_create(scr);
-    lv_obj_set_size(center_circle, 80, 80);
-    lv_obj_center(center_circle);
-    lv_obj_set_style_radius(center_circle, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(center_circle, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_bg_opa(center_circle, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(center_circle, 0, LV_PART_MAIN);
+    meter_center_circle = lv_obj_create(scr);
+    lv_obj_set_size(meter_center_circle, 80, 80);
+    lv_obj_center(meter_center_circle);
+    lv_obj_set_style_radius(meter_center_circle, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(meter_center_circle, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_bg_opa(meter_center_circle, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(meter_center_circle, 0, LV_PART_MAIN);
     /* Move circle to foreground to cover the needle */
-    lv_obj_move_foreground(center_circle);
-    lv_obj_clear_flag(center_circle, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_move_foreground(meter_center_circle);
+    lv_obj_clear_flag(meter_center_circle, LV_OBJ_FLAG_SCROLLABLE);
 
     /* Create a container for center labels (value and unit) */
-    lv_obj_t *center_container = lv_obj_create(center_circle);
+    lv_obj_t *center_container = lv_obj_create(meter_center_circle);
     lv_obj_set_size(center_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_center(center_container);
     lv_obj_set_style_bg_opa(center_container, LV_OPA_TRANSP, 0);
@@ -556,23 +682,34 @@ void draw_meter(lv_obj_t *scr)
     lv_timer_create(meter_anim_timer_cb, 50, NULL);
 }
 
+void change_theme_timer_cb(lv_timer_t *t) {
+
+  dashboard_set_night_mode(!dashboard_night_mode);
+}
+
 void dashboard_create(void) {
   /* Create a clean screen */
-  lv_obj_t *scr = lv_obj_create(NULL);
-  lv_scr_load(scr);
+  scr_root = lv_obj_create(NULL);
+  lv_scr_load(scr_root);
 
   /* Disable scrollbars on the main screen */
-  lv_obj_set_scrollbar_mode(scr, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_set_scrollbar_mode(scr_root, LV_SCROLLBAR_MODE_OFF);
 
   /* Background style */
-  lv_obj_set_style_bg_color(scr, lv_color_hex(0xFFFFFF), 0);
-  lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+  lv_obj_set_style_bg_color(scr_root, lv_color_hex(0xFFFFFF), 0);
+  lv_obj_set_style_bg_opa(scr_root, LV_OPA_COVER, 0);
 
-  draw_separators(scr);
-  draw_current_time(scr);
-  draw_icons(scr);
-  draw_side_panels(scr);
-  draw_energy_bar(scr);
+  draw_separators(scr_root);
+  draw_current_time(scr_root);
+  draw_icons(scr_root);
+  draw_side_panels(scr_root);
+  draw_energy_bar(scr_root);
 
-  draw_meter(scr);
+  draw_meter(scr_root);
+
+  // dashboard_set_night_mode(false);
+  dashboard_set_night_mode(true);
+
+  lv_timer_create(change_theme_timer_cb, 10000, NULL);
 }
+
