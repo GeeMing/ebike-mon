@@ -10,10 +10,11 @@
 #include <time.h>
 
 /* Declare custom font */
-LV_FONT_DECLARE(lv_font_pf_din_mono_30)
 // LV_FONT_DECLARE(lv_font_jetbrains_mono_30)
+LV_FONT_DECLARE(lv_font_pf_din_mono_30)
 LV_FONT_DECLARE(lv_font_jetbrains_mono_26)
 LV_FONT_DECLARE(lv_font_jetbrains_mono_36)
+LV_FONT_DECLARE(lv_font_jetbrains_mono_extra_bold_42)
 
 /* Global screen size constants */
 const lv_coord_t SCREEN_W = 480;
@@ -56,6 +57,12 @@ static lv_obj_t *right_hist_avg_title;
 static lv_obj_t *right_hist_avg_value;
 static lv_obj_t *right_1min_avg_title;
 static lv_obj_t *right_1min_avg_value;
+
+/* Meter widget references for animation */
+static lv_obj_t *meter_widget;
+static lv_obj_t *meter_needle_line;
+static lv_obj_t *meter_center_label;
+static lv_obj_t *meter_unit_label;
 
 /* Energy bar (bottom center) */
 static lv_obj_t *energy_bar_cont;
@@ -165,6 +172,45 @@ static void energy_anim_timer_cb(lv_timer_t *t) {
 
   /* Update the display with the swept value */
   dashboard_set_power(v);
+}
+
+/* Animation timer: sweep meter needle from 0 to 80 and back */
+static void meter_anim_timer_cb(lv_timer_t *t) {
+  static int32_t v = 0;
+  static int dir = 1; /* 1: up, -1: down */
+  const int32_t min_v = 0;
+  const int32_t max_v = 80;
+  const int32_t step = 1; /* change per tick */
+
+  if (!meter_widget || !meter_needle_line) {
+    return;
+  }
+
+  v += dir * step;
+  if (v >= max_v) {
+    v = max_v;
+    dir = -1;
+  } else if (v <= min_v) {
+    v = min_v;
+    dir = 1;
+  }
+
+  /* Update the needle value */
+  lv_scale_set_line_needle_value(meter_widget, meter_needle_line, -10, v);
+
+  /* Update center label with current value */
+  if (meter_center_label) {
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%d", v);
+    lv_label_set_text(meter_center_label, buf);
+
+    /* Change color to red if speed exceeds 60 */
+    if (v > 60) {
+      lv_obj_set_style_text_color(meter_center_label, lv_palette_main(LV_PALETTE_RED), 0);
+    } else {
+      lv_obj_set_style_text_color(meter_center_label, lv_color_hex(0x000000), 0);
+    }
+  }
 }
 
 static void update_icons_timer_cb(lv_timer_t *t) {
@@ -398,6 +444,118 @@ static void draw_side_panels(lv_obj_t *scr) {
                  "42.0", rx, top_h + spacing * 4); // 电池容量
 }
 
+
+void draw_meter(lv_obj_t *scr)
+{
+    /* Create a scale widget (replaces the old meter widget) */
+    lv_obj_t *meter = lv_scale_create(scr);
+    lv_obj_center(meter);
+    lv_obj_set_size(meter, 180, 180);
+
+    /* Set to round inner mode for circular gauge */
+    lv_scale_set_mode(meter, LV_SCALE_MODE_ROUND_INNER);
+
+    lv_scale_set_range(meter, 0, 80);
+
+    /* Set angle range (270 degrees) and rotation (135 degrees = bottom center) */
+    lv_scale_set_angle_range(meter, 270);
+    lv_scale_set_rotation(meter, 135);
+
+    /* Set tick count: 41 total ticks, major tick every 5 ticks (so 9 major ticks) */
+    lv_scale_set_total_tick_count(meter, 41);
+    lv_scale_set_major_tick_every(meter, 5);
+
+    /* Enable labels */
+    lv_scale_set_label_show(meter, true);
+
+    /* Set tick line width - make ticks thicker */
+    // lv_obj_set_style_line_width(meter, 3, LV_PART_INDICATOR);  /* Major ticks width */
+    // lv_obj_set_style_line_width(meter, 2, LV_PART_ITEMS);     /* Minor ticks width */
+    lv_obj_set_style_length(meter, 15, LV_PART_INDICATOR);     /* Minor ticks width */
+    lv_obj_set_style_length(meter, 10, LV_PART_ITEMS);     /* Minor ticks width */
+    lv_obj_set_style_arc_width(meter, 5, LV_PART_MAIN);
+
+
+    /* Add a blue section for 0-20 */
+    lv_scale_section_t * blue_section = lv_scale_add_section(meter);
+    lv_scale_set_section_range(meter, blue_section, 0, 20);
+
+    /* Create style for blue section */
+    static lv_style_t blue_style;
+    lv_style_init(&blue_style);
+    lv_style_set_arc_color(&blue_style, lv_palette_main(LV_PALETTE_BLUE));
+    lv_style_set_line_color(&blue_style, lv_palette_main(LV_PALETTE_BLUE));
+    lv_scale_set_section_style_main(meter, blue_section, &blue_style);
+    lv_scale_set_section_style_indicator(meter, blue_section, &blue_style);
+
+    /* Add a red section for 80-100 */
+    lv_scale_section_t * red_section = lv_scale_add_section(meter);
+    lv_scale_set_section_range(meter, red_section, 60, 80);
+
+    /* Create style for red section */
+    static lv_style_t red_style;
+    lv_style_init(&red_style);
+    lv_style_set_arc_color(&red_style, lv_palette_main(LV_PALETTE_RED));
+    lv_style_set_line_color(&red_style, lv_palette_main(LV_PALETTE_RED));
+    lv_scale_set_section_style_main(meter, red_section, &red_style);
+    lv_scale_set_section_style_indicator(meter, red_section, &red_style);
+
+    /* Add a needle line indicator */
+    lv_obj_t * needle_line = lv_line_create(meter);
+    lv_obj_set_style_line_width(needle_line, 4, LV_PART_MAIN);
+    lv_obj_set_style_line_color(needle_line, lv_palette_main(LV_PALETTE_GREY), LV_PART_MAIN);
+    lv_obj_set_style_line_rounded(needle_line, true, LV_PART_MAIN);
+    /* Optional: set pad_right to offset needle start (may not directly affect line points) */
+    lv_obj_set_style_pad_right(needle_line, 30, LV_PART_MAIN);
+    lv_scale_set_line_needle_value(meter, needle_line, -10, 0);
+
+    /* Create a circle to cover the center area and hide the needle's center part */
+    lv_obj_t * center_circle = lv_obj_create(scr);
+    lv_obj_set_size(center_circle, 80, 80);
+    lv_obj_center(center_circle);
+    lv_obj_set_style_radius(center_circle, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(center_circle, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_bg_opa(center_circle, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(center_circle, 0, LV_PART_MAIN);
+    /* Move circle to foreground to cover the needle */
+    lv_obj_move_foreground(center_circle);
+    lv_obj_clear_flag(center_circle, LV_OBJ_FLAG_SCROLLABLE);
+
+    /* Create a container for center labels (value and unit) */
+    lv_obj_t *center_container = lv_obj_create(center_circle);
+    lv_obj_set_size(center_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_center(center_container);
+    lv_obj_set_style_bg_opa(center_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(center_container, 0, 0);
+    lv_obj_set_layout(center_container, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(center_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(center_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_all(center_container, 0, 0);
+    lv_obj_set_style_pad_row(center_container, 2, 0);
+
+    /* Add center label to display current value */
+    meter_center_label = lv_label_create(center_container);
+    lv_label_set_text(meter_center_label, "0");
+    lv_obj_set_style_text_font(meter_center_label, &lv_font_jetbrains_mono_extra_bold_42, 0);
+    lv_obj_set_style_text_color(meter_center_label, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_text_align(meter_center_label, LV_TEXT_ALIGN_CENTER, 0);
+
+    /* Add unit label below the value */
+    meter_unit_label = lv_label_create(center_container);
+    lv_label_set_text(meter_unit_label, "km/h");
+    lv_obj_set_style_text_font(meter_unit_label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_color(meter_unit_label, lv_color_hex(0x666666), 0);
+    lv_obj_set_style_text_align(meter_unit_label, LV_TEXT_ALIGN_CENTER, 0);
+
+
+    /* Save references for animation */
+    meter_widget = meter;
+    meter_needle_line = needle_line;
+
+    /* Start animation timer: update every 50ms for smooth animation */
+    lv_timer_create(meter_anim_timer_cb, 50, NULL);
+}
+
 void dashboard_create(void) {
   /* Create a clean screen */
   lv_obj_t *scr = lv_obj_create(NULL);
@@ -415,4 +573,6 @@ void dashboard_create(void) {
   draw_icons(scr);
   draw_side_panels(scr);
   draw_energy_bar(scr);
+
+  draw_meter(scr);
 }
