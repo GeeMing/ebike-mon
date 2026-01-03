@@ -21,19 +21,10 @@ LV_FONT_DECLARE(lv_font_jetbrains_mono_extra_bold_42)
 const lv_coord_t SCREEN_W = 480;
 const lv_coord_t SCREEN_H = 272;
 
-static lv_obj_t *speed_label;
-static lv_obj_t *max_label;
 static lv_obj_t *left_turn_icon;
 static lv_obj_t *right_turn_icon;
 static lv_obj_t *high_beam_icon;
-static lv_obj_t *brake_light_obj;
-static lv_obj_t *headlight_obj;
-static lv_obj_t *power_label;
 static lv_obj_t *time_label;
-static lv_obj_t *battery_bar;
-static lv_obj_t *battery_label;
-static lv_obj_t *range_label;
-static lv_obj_t *gear_label;
 
 /* Theme state */
 static bool dashboard_night_mode;
@@ -44,6 +35,8 @@ static lv_color_t theme_line;
 static lv_color_t theme_border;
 static lv_color_t theme_text_alert;
 static lv_color_t theme_needle;
+static lv_color_t theme_energy_regen;   /* Energy bar: regeneration (green) */
+static lv_color_t theme_energy_consume; /* Energy bar: consumption (red) */
 
 static lv_obj_t *scr_root;
 static lv_obj_t *sep_line_left;
@@ -65,22 +58,26 @@ static lv_obj_t *left_used_title;
 static lv_obj_t *left_used_value;
 
 /* Right panel labels */
-static lv_obj_t *right_batt_title;
+static lv_obj_t *right_batt_cap_title;
 static lv_obj_t *right_batt_cap_value;
 static lv_obj_t *right_range_title;
-static lv_obj_t *right_est_range_value;
+static lv_obj_t *right_range_value;
 static lv_obj_t *right_maxp_title;
 static lv_obj_t *right_maxp_value;
 static lv_obj_t *right_hist_avg_title;
 static lv_obj_t *right_hist_avg_value;
-static lv_obj_t *right_1min_avg_title;
-static lv_obj_t *right_1min_avg_value;
+static lv_obj_t *right_trip_avg_title;
+static lv_obj_t *right_trip_avg_value;
 
 /* Meter widget references for animation */
 static lv_obj_t *meter_widget;
 static lv_obj_t *meter_needle_line;
 static lv_obj_t *meter_center_label;
 static lv_obj_t *meter_unit_label;
+
+/* Meter section styles (must be static/global for LVGL) */
+static lv_style_t meter_blue_style;
+static lv_style_t meter_red_style;
 
 /* Energy bar (bottom center) */
 static lv_obj_t *energy_bar_cont;
@@ -93,14 +90,14 @@ static const int32_t ENERGY_MAX_W = 6000;
 static const int32_t ENERGY_BAR_W = 200;
 static const int32_t ENERGY_BAR_H = 50;
 
-static void dashboard_apply_theme(void) {
+/* Set theme color variables based on night mode */
+static void dashboard_init_theme_colors(void) {
   if (dashboard_night_mode) {
     theme_bg = lv_color_hex(0x111418);
     theme_text_main = lv_color_hex(0xE6E6E6);
     theme_text_dim = lv_color_hex(0x9AA0A6);
     theme_line = lv_color_hex(0x3A3F45);
     theme_border = lv_color_hex(0xC8C8C8);
-    theme_text_alert = lv_palette_main(LV_PALETTE_RED);
     theme_needle = lv_color_hex(0xB0B0B0);
   } else {
     theme_bg = lv_color_hex(0xFFFFFF);
@@ -108,92 +105,67 @@ static void dashboard_apply_theme(void) {
     theme_text_dim = lv_color_hex(0x666666);
     theme_line = lv_color_hex(0x888888);
     theme_border = lv_color_hex(0x000000);
-    theme_text_alert = lv_palette_main(LV_PALETTE_RED);
     theme_needle = lv_palette_main(LV_PALETTE_GREY);
   }
+  /* These colors are the same for both themes */
+  theme_text_alert = lv_palette_main(LV_PALETTE_RED);
+  theme_energy_regen = lv_color_hex(0x67C23A);
+  theme_energy_consume = lv_color_hex(0xF56C6C);
+}
 
-  if (scr_root) {
-    lv_obj_set_style_bg_color(scr_root, theme_bg, 0);
-    lv_obj_set_style_bg_opa(scr_root, LV_OPA_COVER, 0);
-  }
+/* Apply theme colors to all UI elements */
+static void dashboard_apply_theme(void) {
+  dashboard_init_theme_colors();
 
-  if (sep_line_left)
-    lv_obj_set_style_bg_color(sep_line_left, theme_line, 0);
-  if (sep_line_right)
-    lv_obj_set_style_bg_color(sep_line_right, theme_line, 0);
-  if (sep_line_top)
-    lv_obj_set_style_bg_color(sep_line_top, theme_line, 0);
+  /* Screen background */
+  lv_obj_set_style_bg_color(scr_root, theme_bg, 0);
 
-  if (time_label)
-    lv_obj_set_style_text_color(time_label, theme_text_main, 0);
+  /* Separator lines */
+  lv_obj_set_style_bg_color(sep_line_left, theme_line, 0);
+  lv_obj_set_style_bg_color(sep_line_right, theme_line, 0);
+  lv_obj_set_style_bg_color(sep_line_top, theme_line, 0);
 
-  if (left_odo_title)
-    lv_obj_set_style_text_color(left_odo_title, theme_text_dim, 0);
-  if (left_trip_title)
-    lv_obj_set_style_text_color(left_trip_title, theme_text_dim, 0);
-  if (left_ride_time_title)
-    lv_obj_set_style_text_color(left_ride_time_title, theme_text_dim, 0);
-  if (left_max_speed_title)
-    lv_obj_set_style_text_color(left_max_speed_title, theme_text_dim, 0);
-  if (left_used_title)
-    lv_obj_set_style_text_color(left_used_title, theme_text_dim, 0);
+  /* Time label */
+  lv_obj_set_style_text_color(time_label, theme_text_main, 0);
 
-  if (left_odo_value)
-    lv_obj_set_style_text_color(left_odo_value, theme_text_main, 0);
-  if (left_trip_value)
-    lv_obj_set_style_text_color(left_trip_value, theme_text_main, 0);
-  if (left_ride_time_value)
-    lv_obj_set_style_text_color(left_ride_time_value, theme_text_main, 0);
-  if (left_max_speed_value)
-    lv_obj_set_style_text_color(left_max_speed_value, theme_text_main, 0);
-  if (left_used_value)
-    lv_obj_set_style_text_color(left_used_value, theme_text_main, 0);
+  /* Left panel */
+  lv_obj_set_style_text_color(left_odo_title, theme_text_dim, 0);
+  lv_obj_set_style_text_color(left_trip_title, theme_text_dim, 0);
+  lv_obj_set_style_text_color(left_ride_time_title, theme_text_dim, 0);
+  lv_obj_set_style_text_color(left_max_speed_title, theme_text_dim, 0);
+  lv_obj_set_style_text_color(left_used_title, theme_text_dim, 0);
+  lv_obj_set_style_text_color(left_odo_value, theme_text_main, 0);
+  lv_obj_set_style_text_color(left_trip_value, theme_text_main, 0);
+  lv_obj_set_style_text_color(left_ride_time_value, theme_text_main, 0);
+  lv_obj_set_style_text_color(left_max_speed_value, theme_text_main, 0);
+  lv_obj_set_style_text_color(left_used_value, theme_text_main, 0);
 
-  if (right_batt_title)
-    lv_obj_set_style_text_color(right_batt_title, theme_text_dim, 0);
-  if (right_range_title)
-    lv_obj_set_style_text_color(right_range_title, theme_text_dim, 0);
-  if (right_maxp_title)
-    lv_obj_set_style_text_color(right_maxp_title, theme_text_dim, 0);
-  if (right_hist_avg_title)
-    lv_obj_set_style_text_color(right_hist_avg_title, theme_text_dim, 0);
-  if (right_1min_avg_title)
-    lv_obj_set_style_text_color(right_1min_avg_title, theme_text_dim, 0);
+  /* Right panel */
+  lv_obj_set_style_text_color(right_batt_cap_title, theme_text_dim, 0);
+  lv_obj_set_style_text_color(right_range_title, theme_text_dim, 0);
+  lv_obj_set_style_text_color(right_maxp_title, theme_text_dim, 0);
+  lv_obj_set_style_text_color(right_hist_avg_title, theme_text_dim, 0);
+  lv_obj_set_style_text_color(right_trip_avg_title, theme_text_dim, 0);
+  lv_obj_set_style_text_color(right_batt_cap_value, theme_text_main, 0);
+  lv_obj_set_style_text_color(right_range_value, theme_text_main, 0);
+  lv_obj_set_style_text_color(right_maxp_value, theme_text_main, 0);
+  lv_obj_set_style_text_color(right_hist_avg_value, theme_text_main, 0);
+  lv_obj_set_style_text_color(right_trip_avg_value, theme_text_main, 0);
 
-  if (right_batt_cap_value)
-    lv_obj_set_style_text_color(right_batt_cap_value, theme_text_main, 0);
-  if (right_est_range_value)
-    lv_obj_set_style_text_color(right_est_range_value, theme_text_main, 0);
-  if (right_maxp_value)
-    lv_obj_set_style_text_color(right_maxp_value, theme_text_main, 0);
-  if (right_hist_avg_value)
-    lv_obj_set_style_text_color(right_hist_avg_value, theme_text_main, 0);
-  if (right_1min_avg_value)
-    lv_obj_set_style_text_color(right_1min_avg_value, theme_text_main, 0);
+  /* Energy bar */
+  lv_obj_set_style_border_color(energy_bar_cont, theme_border, 0);
+  lv_obj_set_style_text_color(energy_bar_label, theme_text_main, 0);
+  lv_obj_set_style_bg_color(zero_line, theme_line, 0);
 
-  if (energy_bar_cont)
-    lv_obj_set_style_border_color(energy_bar_cont, theme_border, 0);
-  if (energy_bar_label)
-    lv_obj_set_style_text_color(energy_bar_label, theme_text_main, 0);
-  if (zero_line)
-    lv_obj_set_style_bg_color(zero_line, theme_line, 0);
-
-  if (meter_center_circle)
-    lv_obj_set_style_bg_color(meter_center_circle, theme_bg, 0);
-  if (meter_center_label)
-    lv_obj_set_style_text_color(meter_center_label, theme_text_main, 0);
-  if (meter_unit_label)
-    lv_obj_set_style_text_color(meter_unit_label, theme_text_dim, 0);
-
-  if (meter_widget) {
-    lv_obj_set_style_arc_color(meter_widget, theme_line, LV_PART_MAIN);
-    lv_obj_set_style_line_color(meter_widget, theme_line, LV_PART_ITEMS);
-    lv_obj_set_style_line_color(meter_widget, theme_line, LV_PART_INDICATOR);
-    lv_obj_set_style_text_color(meter_widget, theme_text_dim, LV_PART_MAIN);
-  }
-
-  if (meter_needle_line)
-    lv_obj_set_style_line_color(meter_needle_line, theme_needle, LV_PART_MAIN);
+  /* Meter */
+  lv_obj_set_style_bg_color(meter_center_circle, theme_bg, 0);
+  lv_obj_set_style_text_color(meter_center_label, theme_text_main, 0);
+  lv_obj_set_style_text_color(meter_unit_label, theme_text_dim, 0);
+  lv_obj_set_style_arc_color(meter_widget, theme_line, LV_PART_MAIN);
+  lv_obj_set_style_line_color(meter_widget, theme_line, LV_PART_ITEMS);
+  lv_obj_set_style_line_color(meter_widget, theme_line, LV_PART_INDICATOR);
+  lv_obj_set_style_text_color(meter_widget, theme_text_dim, LV_PART_MAIN);
+  lv_obj_set_style_line_color(meter_needle_line, theme_needle, LV_PART_MAIN);
 }
 
 void dashboard_set_night_mode(bool enable) {
@@ -415,19 +387,19 @@ static void draw_separators(lv_obj_t *scr) {
 
   sep_line_left = lv_obj_create(scr);
   lv_obj_set_size(sep_line_left, line_size, SCREEN_H - top_h);
-  lv_obj_set_style_bg_color(sep_line_left, lv_color_hex(0x888888), 0);
+  lv_obj_set_style_bg_color(sep_line_left, theme_line, 0);
   lv_obj_set_style_border_width(sep_line_left, 0, 0);
   lv_obj_set_pos(sep_line_left, left_x, top_h);
 
   sep_line_right = lv_obj_create(scr);
   lv_obj_set_size(sep_line_right, line_size, SCREEN_H - top_h);
-  lv_obj_set_style_bg_color(sep_line_right, lv_color_hex(0x888888), 0);
+  lv_obj_set_style_bg_color(sep_line_right, theme_line, 0);
   lv_obj_set_style_border_width(sep_line_right, 0, 0);
   lv_obj_set_pos(sep_line_right, right_x, top_h);
 
   sep_line_top = lv_obj_create(scr);
   lv_obj_set_size(sep_line_top, SCREEN_W, line_size);
-  lv_obj_set_style_bg_color(sep_line_top, lv_color_hex(0x888888), 0);
+  lv_obj_set_style_bg_color(sep_line_top, theme_line, 0);
   lv_obj_set_style_border_width(sep_line_top, 0, 0);
   lv_obj_set_pos(sep_line_top, 0, top_h);
 }
@@ -441,12 +413,12 @@ static void draw_energy_bar(lv_obj_t *scr) {
   const int left_size = zero_line_x;
   const int right_size = ENERGY_BAR_W - left_size;
 
-  /* Container: transparent background with black border only */
+  /* Container: transparent background with border only */
   energy_bar_cont = lv_obj_create(scr);
   lv_obj_set_size(energy_bar_cont, ENERGY_BAR_W, ENERGY_BAR_H);
   lv_obj_set_style_bg_opa(energy_bar_cont, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(energy_bar_cont, 4, 0);
-  lv_obj_set_style_border_color(energy_bar_cont, lv_color_hex(0x000000), 0);
+  lv_obj_set_style_border_color(energy_bar_cont, theme_border, 0);
   lv_obj_set_style_radius(energy_bar_cont, 8, 0);
   lv_obj_set_pos(energy_bar_cont, left_x, SCREEN_H - ENERGY_BAR_H - 5);
   lv_obj_clear_flag(energy_bar_cont, LV_OBJ_FLAG_SCROLLABLE);
@@ -459,8 +431,7 @@ static void draw_energy_bar(lv_obj_t *scr) {
   energy_bar_left = lv_obj_create(energy_bar_cont);
   lv_obj_set_size(energy_bar_left, left_value, ENERGY_BAR_H - 8);
   lv_obj_align(energy_bar_left, LV_ALIGN_LEFT_MID, left_size - left_value, 0);
-  lv_obj_set_style_bg_color(energy_bar_left, lv_color_hex(0x67c23a),
-                            0); // 绿色回收
+  lv_obj_set_style_bg_color(energy_bar_left, theme_energy_regen, 0);
   lv_obj_set_style_radius(energy_bar_left, 0, 0);
   lv_obj_set_style_border_width(energy_bar_left, 0, 0);
   lv_obj_set_style_bg_opa(energy_bar_left, LV_OPA_COVER, 0);
@@ -469,23 +440,22 @@ static void draw_energy_bar(lv_obj_t *scr) {
   energy_bar_right = lv_obj_create(energy_bar_cont);
   lv_obj_set_size(energy_bar_right, right_value, ENERGY_BAR_H - 8);
   lv_obj_align(energy_bar_right, LV_ALIGN_LEFT_MID, left_size, 0);
-  lv_obj_set_style_bg_color(energy_bar_right, lv_color_hex(0xf56c6c),
-                            0); // 红色能量
+  lv_obj_set_style_bg_color(energy_bar_right, theme_energy_consume, 0);
   lv_obj_set_style_radius(energy_bar_right, 0, 0);
   lv_obj_set_style_border_width(energy_bar_right, 0, 0);
   lv_obj_set_style_bg_opa(energy_bar_right, LV_OPA_COVER, 0);
   lv_obj_clear_flag(energy_bar_right, LV_OBJ_FLAG_SCROLLABLE);
 
-  // 0刻度地方 画一条竖线
+  /* Zero mark line */
   zero_line = lv_obj_create(energy_bar_cont);
   lv_obj_set_size(zero_line, 5, ENERGY_BAR_H);
-  lv_obj_set_style_bg_color(zero_line, lv_color_hex(0xAAAAAA), 0); // gray color
+  lv_obj_set_style_bg_color(zero_line, theme_line, 0);
   lv_obj_set_style_border_width(zero_line, 0, 0);
   lv_obj_align(zero_line, LV_ALIGN_LEFT_MID, zero_line_x, 0);
 
   energy_bar_label = lv_label_create(energy_bar_cont);
   lv_obj_align(energy_bar_label, LV_ALIGN_CENTER, 0, 0);
-  lv_obj_set_style_text_color(energy_bar_label, lv_color_hex(0x000000), 0);
+  lv_obj_set_style_text_color(energy_bar_label, theme_text_main, 0);
   /* Make the label larger and keep it above the fill rectangles */
   lv_obj_set_style_text_font(energy_bar_label, &lv_font_pf_din_mono_30, 0);
   lv_obj_clear_flag(energy_bar_label, LV_OBJ_FLAG_SCROLLABLE);
@@ -503,7 +473,7 @@ static void draw_current_time(lv_obj_t *scr) {
   lv_label_set_text(time_label, "00:00");
   lv_obj_clear_flag(time_label, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_align(time_label, LV_ALIGN_TOP_MID, 0, 2);
-  lv_obj_set_style_text_color(time_label, lv_color_hex(0x000000), 0);
+  lv_obj_set_style_text_color(time_label, theme_text_main, 0);
   /* larger clock font */
   // lv_obj_set_style_text_font(time_label, &lv_font_montserrat_36, 0);
   lv_obj_set_style_text_font(time_label, &lv_font_jetbrains_mono_36, 0);
@@ -520,14 +490,14 @@ static void create_kv_pair(lv_obj_t *parent, lv_obj_t **title_out,
 
   *title_out = lv_label_create(parent);
   lv_label_set_text(*title_out, title);
-  lv_obj_set_style_text_color(*title_out, lv_color_hex(0x666666), 0);
+  lv_obj_set_style_text_color(*title_out, theme_text_dim, 0);
   /* slightly smaller title font */
   lv_obj_set_style_text_font(*title_out, &lv_font_montserrat_14, 0);
   lv_obj_set_pos(*title_out, x, y);
 
   *value_out = lv_label_create(parent);
   lv_label_set_text(*value_out, value);
-  lv_obj_set_style_text_color(*value_out, lv_color_hex(0x000000), 0);
+  lv_obj_set_style_text_color(*value_out, theme_text_main, 0);
   /* larger value font */
   lv_obj_set_style_text_font(*value_out, &lv_font_jetbrains_mono_26, 0);
   /* smaller gap between title and value */
@@ -558,15 +528,15 @@ static void draw_side_panels(lv_obj_t *scr) {
 
   /* Right side (aligned to right column) */
   lv_coord_t rx = right_x + 8;
-  create_kv_pair(scr, &right_range_title, &right_est_range_value, "RANGE km",
+  create_kv_pair(scr, &right_range_title, &right_range_value, "RANGE km",
                  "100", rx, top_h + spacing * 0); // 预估剩余续航
   create_kv_pair(scr, &right_hist_avg_title, &right_hist_avg_value, "AVG Wh/km",
                  "12.0", rx, top_h + spacing * 1);
-  create_kv_pair(scr, &right_1min_avg_title, &right_1min_avg_value,
+  create_kv_pair(scr, &right_trip_avg_title, &right_trip_avg_value,
                  "TRIP Wh/km", "34.0", rx, top_h + spacing * 2);
   create_kv_pair(scr, &right_maxp_title, &right_maxp_value, "PEAK kW", "4.321",
                  rx, top_h + spacing * 3);
-  create_kv_pair(scr, &right_batt_title, &right_batt_cap_value, "BATT CAP kWh",
+  create_kv_pair(scr, &right_batt_cap_title, &right_batt_cap_value, "BATT CAP kWh",
                  "42.0", rx, top_h + spacing * 4); // 电池容量
 }
 
@@ -597,39 +567,37 @@ void draw_meter(lv_obj_t *scr)
     /* Set tick line width - make ticks thicker */
     // lv_obj_set_style_line_width(meter, 3, LV_PART_INDICATOR);  /* Major ticks width */
     // lv_obj_set_style_line_width(meter, 2, LV_PART_ITEMS);     /* Minor ticks width */
-    lv_obj_set_style_length(meter, 15, LV_PART_INDICATOR);     /* Minor ticks width */
-    lv_obj_set_style_length(meter, 10, LV_PART_ITEMS);     /* Minor ticks width */
-    lv_obj_set_style_arc_width(meter, 5, LV_PART_MAIN);
+    lv_obj_set_style_length(meter, 15, LV_PART_INDICATOR);     //大刻度长度
+    lv_obj_set_style_length(meter, 10, LV_PART_ITEMS);     //小刻度长度
+    lv_obj_set_style_arc_width(meter, 5, LV_PART_MAIN); //外圈粗细
 
 
     /* Add a blue section for 0-20 */
     lv_scale_section_t * blue_section = lv_scale_add_section(meter);
     lv_scale_set_section_range(meter, blue_section, 0, 20);
 
-    /* Create style for blue section */
-    static lv_style_t blue_style;
-    lv_style_init(&blue_style);
-    lv_style_set_arc_color(&blue_style, lv_palette_main(LV_PALETTE_BLUE));
-    lv_style_set_line_color(&blue_style, lv_palette_main(LV_PALETTE_BLUE));
-    lv_scale_set_section_style_main(meter, blue_section, &blue_style);
-    lv_scale_set_section_style_indicator(meter, blue_section, &blue_style);
+    /* Setup style for blue section */
+    lv_style_init(&meter_blue_style);
+    lv_style_set_arc_color(&meter_blue_style, lv_palette_main(LV_PALETTE_BLUE));
+    lv_style_set_line_color(&meter_blue_style, lv_palette_main(LV_PALETTE_BLUE));
+    lv_scale_set_section_style_main(meter, blue_section, &meter_blue_style);
+    lv_scale_set_section_style_indicator(meter, blue_section, &meter_blue_style);
 
-    /* Add a red section for 80-100 */
+    /* Add a red section for 60-80 */
     lv_scale_section_t * red_section = lv_scale_add_section(meter);
     lv_scale_set_section_range(meter, red_section, 60, 80);
 
-    /* Create style for red section */
-    static lv_style_t red_style;
-    lv_style_init(&red_style);
-    lv_style_set_arc_color(&red_style, lv_palette_main(LV_PALETTE_RED));
-    lv_style_set_line_color(&red_style, lv_palette_main(LV_PALETTE_RED));
-    lv_scale_set_section_style_main(meter, red_section, &red_style);
-    lv_scale_set_section_style_indicator(meter, red_section, &red_style);
+    /* Setup style for red section */
+    lv_style_init(&meter_red_style);
+    lv_style_set_arc_color(&meter_red_style, lv_palette_main(LV_PALETTE_RED));
+    lv_style_set_line_color(&meter_red_style, lv_palette_main(LV_PALETTE_RED));
+    lv_scale_set_section_style_main(meter, red_section, &meter_red_style);
+    lv_scale_set_section_style_indicator(meter, red_section, &meter_red_style);
 
     /* Add a needle line indicator */
     lv_obj_t * needle_line = lv_line_create(meter);
     lv_obj_set_style_line_width(needle_line, 4, LV_PART_MAIN);
-    lv_obj_set_style_line_color(needle_line, lv_palette_main(LV_PALETTE_GREY), LV_PART_MAIN);
+    lv_obj_set_style_line_color(needle_line, theme_needle, LV_PART_MAIN);
     lv_obj_set_style_line_rounded(needle_line, true, LV_PART_MAIN);
     /* Optional: set pad_right to offset needle start (may not directly affect line points) */
     lv_obj_set_style_pad_right(needle_line, 30, LV_PART_MAIN);
@@ -640,7 +608,7 @@ void draw_meter(lv_obj_t *scr)
     lv_obj_set_size(meter_center_circle, 80, 80);
     lv_obj_center(meter_center_circle);
     lv_obj_set_style_radius(meter_center_circle, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(meter_center_circle, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_bg_color(meter_center_circle, theme_bg, 0);
     lv_obj_set_style_bg_opa(meter_center_circle, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(meter_center_circle, 0, LV_PART_MAIN);
     /* Move circle to foreground to cover the needle */
@@ -663,14 +631,14 @@ void draw_meter(lv_obj_t *scr)
     meter_center_label = lv_label_create(center_container);
     lv_label_set_text(meter_center_label, "0");
     lv_obj_set_style_text_font(meter_center_label, &lv_font_jetbrains_mono_extra_bold_42, 0);
-    lv_obj_set_style_text_color(meter_center_label, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_text_color(meter_center_label, theme_text_main, 0);
     lv_obj_set_style_text_align(meter_center_label, LV_TEXT_ALIGN_CENTER, 0);
 
     /* Add unit label below the value */
     meter_unit_label = lv_label_create(center_container);
     lv_label_set_text(meter_unit_label, "km/h");
     lv_obj_set_style_text_font(meter_unit_label, &lv_font_montserrat_12, 0);
-    lv_obj_set_style_text_color(meter_unit_label, lv_color_hex(0x666666), 0);
+    lv_obj_set_style_text_color(meter_unit_label, theme_text_dim, 0);
     lv_obj_set_style_text_align(meter_unit_label, LV_TEXT_ALIGN_CENTER, 0);
 
 
@@ -691,25 +659,23 @@ void dashboard_create(void) {
   /* Create a clean screen */
   scr_root = lv_obj_create(NULL);
   lv_scr_load(scr_root);
-
-  /* Disable scrollbars on the main screen */
   lv_obj_set_scrollbar_mode(scr_root, LV_SCROLLBAR_MODE_OFF);
-
-  /* Background style */
-  lv_obj_set_style_bg_color(scr_root, lv_color_hex(0xFFFFFF), 0);
   lv_obj_set_style_bg_opa(scr_root, LV_OPA_COVER, 0);
 
+  /* Initialize theme colors first (needed by draw functions) */
+  dashboard_night_mode = true;
+  dashboard_init_theme_colors();
+
+  /* Draw all UI components */
   draw_separators(scr_root);
   draw_current_time(scr_root);
   draw_icons(scr_root);
   draw_side_panels(scr_root);
   draw_energy_bar(scr_root);
-
   draw_meter(scr_root);
 
-  // dashboard_set_night_mode(false);
-  dashboard_set_night_mode(true);
+  /* Apply theme to all created components */
+  dashboard_apply_theme();
 
   lv_timer_create(change_theme_timer_cb, 10000, NULL);
 }
-
