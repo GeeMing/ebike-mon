@@ -25,6 +25,7 @@ static lv_obj_t *left_turn_icon;
 static lv_obj_t *right_turn_icon;
 static lv_obj_t *high_beam_icon;
 static lv_obj_t *time_label;
+static lv_obj_t *date_label;
 
 /* Theme state */
 static bool dashboard_night_mode;
@@ -127,6 +128,7 @@ static void dashboard_apply_theme(void) {
 
   /* Time label */
   lv_obj_set_style_text_color(time_label, theme_text_main, 0);
+  lv_obj_set_style_text_color(date_label, theme_text_dim, 0);
 
   /* Left panel */
   lv_obj_set_style_text_color(left_odo_title, theme_text_dim, 0);
@@ -189,6 +191,7 @@ static void time_timer_cb(lv_timer_t *t) {
   struct tm *tm_now = localtime(&now);
   char buf[32];
   static bool toggle = false;
+  static const char *weekdays[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
   toggle = !toggle;
   if (tm_now) {
     if (toggle) {
@@ -197,6 +200,10 @@ static void time_timer_cb(lv_timer_t *t) {
       snprintf(buf, sizeof(buf), "%02d %02d", tm_now->tm_hour, tm_now->tm_min);
     }
     lv_label_set_text(time_label, buf);
+
+    /* Update date label: MM/DD + weekday */
+    snprintf(buf, sizeof(buf), "%02d/%02d\n%s", tm_now->tm_mon + 1, tm_now->tm_mday, weekdays[tm_now->tm_wday]);
+    lv_label_set_text(date_label, buf);
   }
 }
 
@@ -379,6 +386,15 @@ static void draw_current_time(lv_obj_t *scr) {
   // lv_obj_set_style_text_font(time_label, &lv_font_montserrat_36, 0);
   lv_obj_set_style_text_font(time_label, &lv_font_jetbrains_mono_36, 0);
   // lv_obj_set_scrollbar_mode(time_label, LV_SCROLLBAR_MODE_OFF);
+
+  /* Date label (right of time, smaller font) */
+  date_label = lv_label_create(scr);
+  lv_label_set_text(date_label, "01/01\nSun");
+  lv_obj_clear_flag(date_label, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_align_to(date_label, time_label, LV_ALIGN_OUT_RIGHT_MID, 6, 4);
+  lv_obj_set_style_text_color(date_label, theme_text_dim, 0);
+  lv_obj_set_style_text_font(date_label, &lv_font_montserrat_12, 0);
+  lv_obj_set_style_text_line_space(date_label, -2, 0);
 
   lv_timer_create(time_timer_cb, 500, NULL);
 }
