@@ -251,100 +251,6 @@ void dashboard_set_power(int w) {
   lv_obj_set_size(energy_bar_right, right_value, ENERGY_BAR_H - 8);
 }
 
-/* Animation timer: sweep power from -3000..9000 */
-static void energy_anim_timer_cb(lv_timer_t *t) {
-  static int32_t v = -3000;
-  static int dir = 1; /* 1: up, -1: down */
-  const int32_t min_v = -3000;
-  const int32_t max_v = 9000;
-  const int32_t step = 100; /* change per tick (w) */
-
-  v += dir * step;
-  if (v >= max_v) {
-    v = max_v;
-    dir = -1;
-  } else if (v <= min_v) {
-    v = min_v;
-    dir = 1;
-  }
-
-  /* Update the display with the swept value */
-  dashboard_set_power(v);
-}
-
-/* Animation timer: sweep meter needle from 0 to 80 and back */
-static void meter_anim_timer_cb(lv_timer_t *t) {
-  static int32_t v = 0;
-  static int dir = 1; /* 1: up, -1: down */
-  const int32_t min_v = 0;
-  const int32_t max_v = 80;
-  const int32_t step = 1; /* change per tick */
-
-  if (!meter_widget || !meter_needle_line) {
-    return;
-  }
-
-  v += dir * step;
-  if (v >= max_v) {
-    v = max_v;
-    dir = -1;
-  } else if (v <= min_v) {
-    v = min_v;
-    dir = 1;
-  }
-
-  /* Update the needle value */
-  lv_scale_set_line_needle_value(meter_widget, meter_needle_line, -10, v);
-
-  /* Update center label with current value */
-  if (meter_center_label) {
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%d", v);
-    lv_label_set_text(meter_center_label, buf);
-
-    /* Change color to red if speed exceeds 60 */
-    if (v > 60) {
-      lv_obj_set_style_text_color(meter_center_label, theme_text_alert, 0);
-    } else {
-      lv_obj_set_style_text_color(meter_center_label, theme_text_main, 0);
-    }
-  }
-}
-
-static void update_icons_timer_cb(lv_timer_t *t) {
-  static bool toggle = false;
-  static uint32_t state = 0;
-  toggle = !toggle;
-  state++;
-
-  if (state > 20) {
-    state = 0;
-  }
-
-  lv_obj_set_style_img_opa(left_turn_icon, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_img_opa(right_turn_icon, LV_OPA_TRANSP, 0);
-
-  if (state < 10) {
-    if (toggle) {
-      lv_obj_set_style_img_opa(left_turn_icon, LV_OPA_TRANSP, 0);
-    } else {
-      lv_obj_set_style_img_opa(left_turn_icon, LV_OPA_COVER, 0);
-    }
-  } else if (state < 20) {
-    if (toggle) {
-      lv_obj_set_style_img_opa(right_turn_icon, LV_OPA_TRANSP, 0);
-    } else {
-      lv_obj_set_style_img_opa(right_turn_icon, LV_OPA_COVER, 0);
-    }
-  }
-
-  if (state % 12 > 6) {
-    lv_obj_set_style_img_opa(high_beam_icon, LV_OPA_TRANSP, 0);
-  } else {
-    lv_obj_set_style_img_opa(high_beam_icon, LV_OPA_COVER, 0);
-  }
-}
-
 /* Draw top-left and top-right icons */
 static void draw_icons(lv_obj_t *scr) {
 
@@ -372,8 +278,6 @@ static void draw_icons(lv_obj_t *scr) {
   lv_obj_move_foreground(left_turn_icon);
   lv_obj_move_foreground(high_beam_icon);
   lv_obj_move_foreground(right_turn_icon);
-
-  lv_timer_create(update_icons_timer_cb, 500, NULL);
 }
 /* Draw vertical separators at left_x and right_x */
 static void draw_separators(lv_obj_t *scr) {
@@ -463,9 +367,6 @@ static void draw_energy_bar(lv_obj_t *scr) {
 
   // /* Initialize bar to zero power */
   dashboard_set_power(0);
-
-  // /* Start animation timer to sweep -3000..9000 for demo */
-  lv_timer_create(energy_anim_timer_cb, 100, NULL);
 }
 
 static void draw_current_time(lv_obj_t *scr) {
@@ -515,144 +416,296 @@ static void draw_side_panels(lv_obj_t *scr) {
 
   /* Left side (x=8) */
   lv_coord_t lx = 8;
-  create_kv_pair(scr, &left_odo_title, &left_odo_value, "ODO km", "00000.0", lx,
-                 top_h + spacing * 0);
-  create_kv_pair(scr, &left_trip_title, &left_trip_value, "TRIP km", "000.0",
-                 lx, top_h + spacing * 1);
-  create_kv_pair(scr, &left_ride_time_title, &left_ride_time_value, "RIDE TIME",
-                 "00:00:00", lx, top_h + spacing * 2);
-  create_kv_pair(scr, &left_max_speed_title, &left_max_speed_value,
+  create_kv_pair(scr, &left_odo_title, &left_odo_value, //
+                 "ODO km", "00000.0", lx, top_h + spacing * 0);
+  create_kv_pair(scr, &left_trip_title, &left_trip_value, //
+                 "TRIP km", "000.0", lx, top_h + spacing * 1);
+  create_kv_pair(scr, &left_ride_time_title, &left_ride_time_value, //
+                 "RIDE TIME", "00:00:00", lx, top_h + spacing * 2);
+  create_kv_pair(scr, &left_max_speed_title, &left_max_speed_value, //
                  "MAX SPD km/h", "42", lx, top_h + spacing * 3);
-  create_kv_pair(scr, &left_used_title, &left_used_value, "USED kWh", "40.0",
-                 lx, top_h + spacing * 4);
+  create_kv_pair(scr, &left_used_title, &left_used_value, //
+                 "USED kWh", "40.0", lx, top_h + spacing * 4);
 
   /* Right side (aligned to right column) */
   lv_coord_t rx = right_x + 8;
-  create_kv_pair(scr, &right_range_title, &right_range_value, "RANGE km",
-                 "100", rx, top_h + spacing * 0); // 预估剩余续航
-  create_kv_pair(scr, &right_hist_avg_title, &right_hist_avg_value, "AVG Wh/km",
-                 "12.0", rx, top_h + spacing * 1);
-  create_kv_pair(scr, &right_trip_avg_title, &right_trip_avg_value,
+  create_kv_pair(scr, &right_range_title, &right_range_value, //
+                 "RANGE km", "100", rx, top_h + spacing * 0); // 预估剩余续航
+  create_kv_pair(scr, &right_hist_avg_title, &right_hist_avg_value, //
+                 "AVG Wh/km", "12.0", rx, top_h + spacing * 1);
+  create_kv_pair(scr, &right_trip_avg_title, &right_trip_avg_value, //
                  "TRIP Wh/km", "34.0", rx, top_h + spacing * 2);
-  create_kv_pair(scr, &right_maxp_title, &right_maxp_value, "PEAK kW", "4.321",
-                 rx, top_h + spacing * 3);
-  create_kv_pair(scr, &right_batt_cap_title, &right_batt_cap_value, "BATT CAP kWh",
-                 "42.0", rx, top_h + spacing * 4); // 电池容量
+  create_kv_pair(scr, &right_maxp_title, &right_maxp_value, //
+                 "PEAK kW", "4.321", rx, top_h + spacing * 3);
+  create_kv_pair(scr, &right_batt_cap_title, &right_batt_cap_value, //
+                 "BATT CAP kWh", "42.0", rx, top_h + spacing * 4);  // 电池容量
 }
 
+void draw_meter(lv_obj_t *scr) {
+  /* Create a scale widget (replaces the old meter widget) */
+  lv_obj_t *meter = lv_scale_create(scr);
+  lv_obj_center(meter);
+  lv_obj_set_size(meter, 180, 180);
 
-void draw_meter(lv_obj_t *scr)
-{
-    /* Create a scale widget (replaces the old meter widget) */
-    lv_obj_t *meter = lv_scale_create(scr);
-    lv_obj_center(meter);
-    lv_obj_set_size(meter, 180, 180);
+  /* Set to round inner mode for circular gauge */
+  lv_scale_set_mode(meter, LV_SCALE_MODE_ROUND_INNER);
 
-    /* Set to round inner mode for circular gauge */
-    lv_scale_set_mode(meter, LV_SCALE_MODE_ROUND_INNER);
+  lv_scale_set_range(meter, 0, 80);
 
-    lv_scale_set_range(meter, 0, 80);
+  /* Set angle range (270 degrees) and rotation (135 degrees = bottom center) */
+  lv_scale_set_angle_range(meter, 270);
+  lv_scale_set_rotation(meter, 135);
 
-    /* Set angle range (270 degrees) and rotation (135 degrees = bottom center) */
-    lv_scale_set_angle_range(meter, 270);
-    lv_scale_set_rotation(meter, 135);
+  /* Set tick count: 41 total ticks, major tick every 5 ticks (so 9 major ticks)
+   */
+  lv_scale_set_total_tick_count(meter, 41);
+  lv_scale_set_major_tick_every(meter, 5);
 
-    /* Set tick count: 41 total ticks, major tick every 5 ticks (so 9 major ticks) */
-    lv_scale_set_total_tick_count(meter, 41);
-    lv_scale_set_major_tick_every(meter, 5);
+  /* Enable labels */
+  lv_scale_set_label_show(meter, true);
 
-    /* Enable labels */
-    lv_scale_set_label_show(meter, true);
+  /* Set tick line width - make ticks thicker */
+  // lv_obj_set_style_line_width(meter, 3, LV_PART_INDICATOR);  /* Major ticks
+  // width */ lv_obj_set_style_line_width(meter, 2, LV_PART_ITEMS);     /* Minor
+  // ticks width */
+  lv_obj_set_style_length(meter, 15, LV_PART_INDICATOR); // 大刻度长度
+  lv_obj_set_style_length(meter, 10, LV_PART_ITEMS);     // 小刻度长度
+  lv_obj_set_style_arc_width(meter, 5, LV_PART_MAIN);    // 外圈粗细
 
-    /* Set tick line width - make ticks thicker */
-    // lv_obj_set_style_line_width(meter, 3, LV_PART_INDICATOR);  /* Major ticks width */
-    // lv_obj_set_style_line_width(meter, 2, LV_PART_ITEMS);     /* Minor ticks width */
-    lv_obj_set_style_length(meter, 15, LV_PART_INDICATOR);     //大刻度长度
-    lv_obj_set_style_length(meter, 10, LV_PART_ITEMS);     //小刻度长度
-    lv_obj_set_style_arc_width(meter, 5, LV_PART_MAIN); //外圈粗细
+  /* Add a blue section for 0-20 */
+  lv_scale_section_t *blue_section = lv_scale_add_section(meter);
+  lv_scale_set_section_range(meter, blue_section, 0, 20);
 
+  /* Setup style for blue section */
+  lv_style_init(&meter_blue_style);
+  lv_style_set_arc_color(&meter_blue_style, lv_palette_main(LV_PALETTE_BLUE));
+  lv_style_set_line_color(&meter_blue_style, lv_palette_main(LV_PALETTE_BLUE));
+  lv_scale_set_section_style_main(meter, blue_section, &meter_blue_style);
+  lv_scale_set_section_style_indicator(meter, blue_section, &meter_blue_style);
 
-    /* Add a blue section for 0-20 */
-    lv_scale_section_t * blue_section = lv_scale_add_section(meter);
-    lv_scale_set_section_range(meter, blue_section, 0, 20);
+  /* Add a red section for 60-80 */
+  lv_scale_section_t *red_section = lv_scale_add_section(meter);
+  lv_scale_set_section_range(meter, red_section, 60, 80);
 
-    /* Setup style for blue section */
-    lv_style_init(&meter_blue_style);
-    lv_style_set_arc_color(&meter_blue_style, lv_palette_main(LV_PALETTE_BLUE));
-    lv_style_set_line_color(&meter_blue_style, lv_palette_main(LV_PALETTE_BLUE));
-    lv_scale_set_section_style_main(meter, blue_section, &meter_blue_style);
-    lv_scale_set_section_style_indicator(meter, blue_section, &meter_blue_style);
+  /* Setup style for red section */
+  lv_style_init(&meter_red_style);
+  lv_style_set_arc_color(&meter_red_style, lv_palette_main(LV_PALETTE_RED));
+  lv_style_set_line_color(&meter_red_style, lv_palette_main(LV_PALETTE_RED));
+  lv_scale_set_section_style_main(meter, red_section, &meter_red_style);
+  lv_scale_set_section_style_indicator(meter, red_section, &meter_red_style);
 
-    /* Add a red section for 60-80 */
-    lv_scale_section_t * red_section = lv_scale_add_section(meter);
-    lv_scale_set_section_range(meter, red_section, 60, 80);
+  /* Add a needle line indicator */
+  lv_obj_t *needle_line = lv_line_create(meter);
+  lv_obj_set_style_line_width(needle_line, 4, LV_PART_MAIN);
+  lv_obj_set_style_line_color(needle_line, theme_needle, LV_PART_MAIN);
+  lv_obj_set_style_line_rounded(needle_line, true, LV_PART_MAIN);
+  /* Optional: set pad_right to offset needle start (may not directly affect
+   * line points) */
+  lv_obj_set_style_pad_right(needle_line, 30, LV_PART_MAIN);
+  lv_scale_set_line_needle_value(meter, needle_line, -10, 0);
 
-    /* Setup style for red section */
-    lv_style_init(&meter_red_style);
-    lv_style_set_arc_color(&meter_red_style, lv_palette_main(LV_PALETTE_RED));
-    lv_style_set_line_color(&meter_red_style, lv_palette_main(LV_PALETTE_RED));
-    lv_scale_set_section_style_main(meter, red_section, &meter_red_style);
-    lv_scale_set_section_style_indicator(meter, red_section, &meter_red_style);
+  /* Create a circle to cover the center area and hide the needle's center part
+   */
+  meter_center_circle = lv_obj_create(scr);
+  lv_obj_set_size(meter_center_circle, 80, 80);
+  lv_obj_center(meter_center_circle);
+  lv_obj_set_style_radius(meter_center_circle, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_bg_color(meter_center_circle, theme_bg, 0);
+  lv_obj_set_style_bg_opa(meter_center_circle, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_width(meter_center_circle, 0, LV_PART_MAIN);
+  /* Move circle to foreground to cover the needle */
+  lv_obj_move_foreground(meter_center_circle);
+  lv_obj_clear_flag(meter_center_circle, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* Add a needle line indicator */
-    lv_obj_t * needle_line = lv_line_create(meter);
-    lv_obj_set_style_line_width(needle_line, 4, LV_PART_MAIN);
-    lv_obj_set_style_line_color(needle_line, theme_needle, LV_PART_MAIN);
-    lv_obj_set_style_line_rounded(needle_line, true, LV_PART_MAIN);
-    /* Optional: set pad_right to offset needle start (may not directly affect line points) */
-    lv_obj_set_style_pad_right(needle_line, 30, LV_PART_MAIN);
-    lv_scale_set_line_needle_value(meter, needle_line, -10, 0);
+  /* Create a container for center labels (value and unit) */
+  lv_obj_t *center_container = lv_obj_create(meter_center_circle);
+  lv_obj_set_size(center_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_center(center_container);
+  lv_obj_set_style_bg_opa(center_container, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(center_container, 0, 0);
+  lv_obj_set_layout(center_container, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(center_container, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(center_container, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_all(center_container, 0, 0);
+  lv_obj_set_style_pad_row(center_container, 2, 0);
 
-    /* Create a circle to cover the center area and hide the needle's center part */
-    meter_center_circle = lv_obj_create(scr);
-    lv_obj_set_size(meter_center_circle, 80, 80);
-    lv_obj_center(meter_center_circle);
-    lv_obj_set_style_radius(meter_center_circle, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(meter_center_circle, theme_bg, 0);
-    lv_obj_set_style_bg_opa(meter_center_circle, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(meter_center_circle, 0, LV_PART_MAIN);
-    /* Move circle to foreground to cover the needle */
-    lv_obj_move_foreground(meter_center_circle);
-    lv_obj_clear_flag(meter_center_circle, LV_OBJ_FLAG_SCROLLABLE);
+  /* Add center label to display current value */
+  meter_center_label = lv_label_create(center_container);
+  lv_label_set_text(meter_center_label, "0");
+  lv_obj_set_style_text_font(meter_center_label,
+                             &lv_font_jetbrains_mono_extra_bold_42, 0);
+  lv_obj_set_style_text_color(meter_center_label, theme_text_main, 0);
+  lv_obj_set_style_text_align(meter_center_label, LV_TEXT_ALIGN_CENTER, 0);
 
-    /* Create a container for center labels (value and unit) */
-    lv_obj_t *center_container = lv_obj_create(meter_center_circle);
-    lv_obj_set_size(center_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_center(center_container);
-    lv_obj_set_style_bg_opa(center_container, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(center_container, 0, 0);
-    lv_obj_set_layout(center_container, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(center_container, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(center_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_all(center_container, 0, 0);
-    lv_obj_set_style_pad_row(center_container, 2, 0);
+  /* Add unit label below the value */
+  meter_unit_label = lv_label_create(center_container);
+  lv_label_set_text(meter_unit_label, "km/h");
+  lv_obj_set_style_text_font(meter_unit_label, &lv_font_montserrat_12, 0);
+  lv_obj_set_style_text_color(meter_unit_label, theme_text_dim, 0);
+  lv_obj_set_style_text_align(meter_unit_label, LV_TEXT_ALIGN_CENTER, 0);
 
-    /* Add center label to display current value */
-    meter_center_label = lv_label_create(center_container);
-    lv_label_set_text(meter_center_label, "0");
-    lv_obj_set_style_text_font(meter_center_label, &lv_font_jetbrains_mono_extra_bold_42, 0);
-    lv_obj_set_style_text_color(meter_center_label, theme_text_main, 0);
-    lv_obj_set_style_text_align(meter_center_label, LV_TEXT_ALIGN_CENTER, 0);
-
-    /* Add unit label below the value */
-    meter_unit_label = lv_label_create(center_container);
-    lv_label_set_text(meter_unit_label, "km/h");
-    lv_obj_set_style_text_font(meter_unit_label, &lv_font_montserrat_12, 0);
-    lv_obj_set_style_text_color(meter_unit_label, theme_text_dim, 0);
-    lv_obj_set_style_text_align(meter_unit_label, LV_TEXT_ALIGN_CENTER, 0);
-
-
-    /* Save references for animation */
-    meter_widget = meter;
-    meter_needle_line = needle_line;
-
-    /* Start animation timer: update every 50ms for smooth animation */
-    lv_timer_create(meter_anim_timer_cb, 50, NULL);
+  /* Save references for animation */
+  meter_widget = meter;
+  meter_needle_line = needle_line;
 }
 
 void change_theme_timer_cb(lv_timer_t *t) {
 
   dashboard_set_night_mode(!dashboard_night_mode);
+}
+
+/* Animation timer: sweep meter needle from 0 to 80 and back */
+static void meter_anim_timer_cb(lv_timer_t *t) {
+  static int32_t v = 0;
+  static int dir = 1; /* 1: up, -1: down */
+  const int32_t min_v = 0;
+  const int32_t max_v = 80;
+  const int32_t step = 1; /* change per tick */
+
+  if (!meter_widget || !meter_needle_line) {
+    return;
+  }
+
+  v += dir * step;
+  if (v >= max_v) {
+    v = max_v;
+    dir = -1;
+  } else if (v <= min_v) {
+    v = min_v;
+    dir = 1;
+  }
+
+  /* Update the needle value */
+  lv_scale_set_line_needle_value(meter_widget, meter_needle_line, -10, v);
+
+  /* Update center label with current value */
+  if (meter_center_label) {
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%d", v);
+    lv_label_set_text(meter_center_label, buf);
+
+    /* Change color to red if speed exceeds 60 */
+    if (v > 60) {
+      lv_obj_set_style_text_color(meter_center_label, theme_text_alert, 0);
+    } else {
+      lv_obj_set_style_text_color(meter_center_label, theme_text_main, 0);
+    }
+  }
+}
+
+static void update_icons_timer_cb(lv_timer_t *t) {
+  static bool toggle = false;
+  static uint32_t state = 0;
+  toggle = !toggle;
+  state++;
+
+  if (state > 20) {
+    state = 0;
+  }
+
+  lv_obj_set_style_img_opa(left_turn_icon, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_img_opa(right_turn_icon, LV_OPA_TRANSP, 0);
+
+  if (state < 10) {
+    if (toggle) {
+      lv_obj_set_style_img_opa(left_turn_icon, LV_OPA_TRANSP, 0);
+    } else {
+      lv_obj_set_style_img_opa(left_turn_icon, LV_OPA_COVER, 0);
+    }
+  } else if (state < 20) {
+    if (toggle) {
+      lv_obj_set_style_img_opa(right_turn_icon, LV_OPA_TRANSP, 0);
+    } else {
+      lv_obj_set_style_img_opa(right_turn_icon, LV_OPA_COVER, 0);
+    }
+  }
+
+  if (state % 12 > 6) {
+    lv_obj_set_style_img_opa(high_beam_icon, LV_OPA_TRANSP, 0);
+  } else {
+    lv_obj_set_style_img_opa(high_beam_icon, LV_OPA_COVER, 0);
+  }
+}
+
+/* Animation timer: sweep power from -3000..9000 */
+static void energy_anim_timer_cb(lv_timer_t *t) {
+  static int32_t v = -3000;
+  static int dir = 1; /* 1: up, -1: down */
+  const int32_t min_v = -3000;
+  const int32_t max_v = 9000;
+  const int32_t step = 100; /* change per tick (w) */
+
+  v += dir * step;
+  if (v >= max_v) {
+    v = max_v;
+    dir = -1;
+  } else if (v <= min_v) {
+    v = min_v;
+    dir = 1;
+  }
+
+  /* Update the display with the swept value */
+  dashboard_set_power(v);
+}
+
+void test_value_timer_cb(lv_timer_t *t) {
+  static uint32_t tick = 0;
+  tick++;
+  char buf[32];
+
+  /* ODO: 总里程 0-99999.9 km */
+  int odo = (tick * 7 + 12345) % 100000;
+  snprintf(buf, sizeof(buf), "%05d.%d", odo / 10, odo % 10);
+  lv_label_set_text(left_odo_value, buf);
+
+  /* TRIP: 单次行程 0-999.9 km */
+  int trip = (tick * 3 + 567) % 10000;
+  snprintf(buf, sizeof(buf), "%03d.%d", trip / 10, trip % 10);
+  lv_label_set_text(left_trip_value, buf);
+
+  /* RIDE TIME: 骑行时间 HH:MM:SS */
+  int total_sec = (tick * 13 + 3661) % 86400;
+  int h = total_sec / 3600;
+  int m = (total_sec % 3600) / 60;
+  int s = total_sec % 60;
+  snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
+  lv_label_set_text(left_ride_time_value, buf);
+
+  /* MAX SPD: 最高速度 0-80 km/h */
+  int max_spd = (tick * 11 + 42) % 81;
+  snprintf(buf, sizeof(buf), "%d", max_spd);
+  lv_label_set_text(left_max_speed_value, buf);
+
+  /* USED: 已用电量 0-99.9 kWh */
+  int used = (tick * 5 + 123) % 1000;
+  snprintf(buf, sizeof(buf), "%d.%d", used / 10, used % 10);
+  lv_label_set_text(left_used_value, buf);
+
+  /* RANGE: 预估续航 0-200 km */
+  int range = (tick * 17 + 100) % 201;
+  snprintf(buf, sizeof(buf), "%d", range);
+  lv_label_set_text(right_range_value, buf);
+
+  /* HIST AVG: 历史平均能耗 5.0-30.0 Wh/km */
+  int hist_avg = (tick * 7 + 120) % 251 + 50;
+  snprintf(buf, sizeof(buf), "%d.%d", hist_avg / 10, hist_avg % 10);
+  lv_label_set_text(right_hist_avg_value, buf);
+
+  /* TRIP AVG: 单次平均能耗 5.0-50.0 Wh/km */
+  int trip_avg = (tick * 9 + 200) % 451 + 50;
+  snprintf(buf, sizeof(buf), "%d.%d", trip_avg / 10, trip_avg % 10);
+  lv_label_set_text(right_trip_avg_value, buf);
+
+  /* PEAK: 峰值功率 0.000-9.999 kW */
+  int maxp = (tick * 23 + 4321) % 10000;
+  snprintf(buf, sizeof(buf), "%d.%03d", maxp / 1000, maxp % 1000);
+  lv_label_set_text(right_maxp_value, buf);
+
+  /* BATT CAP: 电池容量 (固定值，但可以模拟变化) 10.0-100.0 kWh */
+  int batt_cap = (tick * 2 + 420) % 901 + 100;
+  snprintf(buf, sizeof(buf), "%d.%d", batt_cap / 10, batt_cap % 10);
+  lv_label_set_text(right_batt_cap_value, buf);
 }
 
 void dashboard_create(void) {
@@ -678,4 +731,8 @@ void dashboard_create(void) {
   dashboard_apply_theme();
 
   lv_timer_create(change_theme_timer_cb, 10000, NULL);
+  lv_timer_create(meter_anim_timer_cb, 50, NULL);
+  lv_timer_create(update_icons_timer_cb, 500, NULL);
+  lv_timer_create(energy_anim_timer_cb, 100, NULL);
+  lv_timer_create(test_value_timer_cb, 100, NULL);
 }
