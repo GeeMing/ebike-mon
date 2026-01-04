@@ -15,6 +15,7 @@
 
 #include "hal/hal.h"
 #include <stdio.h>
+#include <SDL.h>
 
 // ........................................................................................................
 /**
@@ -149,11 +150,10 @@ void lvgl_task(void *pvParameters)
  */
 void another_task(void *pvParameters)
 {
-    /* Create some load in an infinite loop */
+    /* Background task - runs at low priority */
     while (true){
-        printf("Second Task is running :)\n");
-        /* Delay the task for 500 milliseconds */
-        vTaskDelay(pdMS_TO_TICKS(500));
+        /* Delay the task for 1 second */
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
@@ -170,15 +170,19 @@ int main(int argc, char **argv)
 {
     LV_UNUSED(argc);
     LV_UNUSED(argv);
+
+    /* Tell SDL we will handle the main function ourselves */
+    SDL_SetMainReady();
+
     /* Initialize LVGL (Light and Versatile Graphics Library) and other resources */
 
-    /* Create the LVGL task */
-    if (xTaskCreate(lvgl_task, "LVGL Task", 4096, NULL, 1, NULL) != pdPASS) {
+    /* Create the LVGL task with higher priority */
+    if (xTaskCreate(lvgl_task, "LVGL Task", 4096, NULL, 3, NULL) != pdPASS) {
         printf("Error creating LVGL task\n");
         /* Error handling */
     }
 
-    /* Create another task */
+    /* Create another task with lower priority */
     if (xTaskCreate(another_task, "Another Task", 1024, NULL, 1, NULL) != pdPASS) {
         printf("Error creating another task\n");
         /* Error handling */

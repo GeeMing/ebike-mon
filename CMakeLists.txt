@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.12.4)
 project(lvgl C CXX)
 
-# Set the correct FreeRTOS port for your system (e.g., Posix for WSL)
-set(FREERTOS_PORT GCC_POSIX CACHE STRING "Port for FreeRTOS on Posix environment")
+# Set the correct FreeRTOS port for your system
+# Use MSVC-MingW for Windows/MinGW, GCC_POSIX for Linux/WSL
+set(FREERTOS_PORT MSVC_MINGW CACHE STRING "Port for FreeRTOS")
 
 set(LVGL_PRO_PROJECT_DIR
     ""
@@ -23,14 +24,14 @@ if(USE_FREERTOS)
 
     # FreeRTOS-specific include directories
     include_directories(${PROJECT_SOURCE_DIR}/FreeRTOS/include)
-    include_directories(${PROJECT_SOURCE_DIR}/FreeRTOS/portable/ThirdParty/GCC/Posix)
+    include_directories(${PROJECT_SOURCE_DIR}/FreeRTOS/portable/MSVC-MingW)
     include_directories(${PROJECT_SOURCE_DIR}/config)
 
     # Add FreeRTOS sources
     file(GLOB FREERTOS_SOURCES
         "${PROJECT_SOURCE_DIR}/FreeRTOS/*.c"
         "${PROJECT_SOURCE_DIR}/FreeRTOS/portable/MemMang/heap_4.c"
-        "${PROJECT_SOURCE_DIR}/FreeRTOS/portable/ThirdParty/GCC/Posix/*.c"
+        "${PROJECT_SOURCE_DIR}/FreeRTOS/portable/MSVC-MingW/*.c"
     )
 else()
     message(STATUS "FreeRTOS is disabled")
@@ -82,12 +83,20 @@ list(REMOVE_ITEM MAIN_SOURCES
     "${PROJECT_SOURCE_DIR}/src/main.c"
     "${PROJECT_SOURCE_DIR}/src/freertos_main.c"
 )
-set(MAIN_LIBS lvgl lvgl::examples lvgl::demos lvgl::thorvg ${SDL2_LIBRARIES})
+# Use SDL2 directly, without SDL2main (we handle main ourselves)
+if(USE_FREERTOS)
+    # For FreeRTOS mode, we use SDL_MAIN_HANDLED so don't need SDL2main
+    set(MAIN_LIBS lvgl lvgl::examples lvgl::demos lvgl::thorvg SDL2::SDL2)
+else()
+    set(MAIN_LIBS lvgl lvgl::examples lvgl::demos lvgl::thorvg ${SDL2_LIBRARIES})
+endif()
 
 # Create the main executable, depending on the FreeRTOS option
 if(USE_FREERTOS)
-    list(APPEND MAIN_SOURCES src/freertos_main.c src/freertos/freertos_posix_port.c ${FREERTOS_SOURCES})
-    list(APPEND MAIN_LIBS freertos_config freertos_kernel)
+    # Remove lv_os_stub.c when using FreeRTOS (LVGL provides lv_os_get_idle_percent)
+    list(REMOVE_ITEM MAIN_SOURCES "${PROJECT_SOURCE_DIR}/src/lv_os_stub.c")
+    list(APPEND MAIN_SOURCES src/freertos_main.c ${FREERTOS_SOURCES})
+    list(APPEND MAIN_LIBS freertos_config freertos_kernel winmm)
 else()
     list(APPEND MAIN_SOURCES src/main.c)
 endif()
@@ -154,7 +163,7 @@ if(LVGL_PRO_PROJECT_DIR)
 endif()
 
 add_executable(main ${MAIN_SOURCES})
-target_compile_definitions(main PRIVATE LV_CONF_INCLUDE_SIMPLE)
+target_compile_definitions(main PRIVATE LV_CONF_INCLUDE_SIMPLE SDL_MAIN_HANDLED)
 target_link_libraries(main ${MAIN_LIBS})
 
 # On Windows, GUI applications do not show a console by default,
