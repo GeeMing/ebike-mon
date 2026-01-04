@@ -80,6 +80,9 @@ static lv_obj_t *meter_unit_label;
 static lv_style_t meter_blue_style;
 static lv_style_t meter_red_style;
 
+/* Parking mode: show "P" instead of speed for first 5 seconds */
+static bool parking_mode = true;
+
 /* Energy bar (bottom center) */
 static lv_obj_t *energy_bar_cont;
 static lv_obj_t *energy_bar_label;
@@ -548,7 +551,8 @@ void draw_meter(lv_obj_t *scr) {
 
   /* Add center label to display current value */
   meter_center_label = lv_label_create(center_container);
-  lv_label_set_text(meter_center_label, "0");
+  /* Initially show "P" for parking mode */
+  lv_label_set_text(meter_center_label, "P");
   lv_obj_set_style_text_font(meter_center_label,
                              &lv_font_jetbrains_mono_extra_bold_42, 0);
   lv_obj_set_style_text_color(meter_center_label, theme_text_main, 0);
@@ -571,6 +575,20 @@ void change_theme_timer_cb(lv_timer_t *t) {
   dashboard_set_night_mode(!dashboard_night_mode);
 }
 
+/* Timer callback to exit parking mode after 5 seconds */
+static void exit_parking_mode_cb(lv_timer_t *t) {
+  parking_mode = false;
+
+  /* Update center label to show "0" with normal color */
+  if (meter_center_label) {
+    lv_label_set_text(meter_center_label, "0");
+    lv_obj_set_style_text_color(meter_center_label, theme_text_main, 0);
+  }
+
+  /* Delete this one-shot timer */
+  lv_timer_del(t);
+}
+
 /* Animation timer: sweep meter needle from 0 to 80 and back */
 static void meter_anim_timer_cb(lv_timer_t *t) {
   static int32_t v = 0;
@@ -580,6 +598,12 @@ static void meter_anim_timer_cb(lv_timer_t *t) {
   const int32_t step = 1; /* change per tick */
 
   if (!meter_widget || !meter_needle_line) {
+    return;
+  }
+
+  /* In parking mode, keep showing "P" and needle at 0 */
+  if (parking_mode) {
+    lv_scale_set_line_needle_value(meter_widget, meter_needle_line, -10, 0);
     return;
   }
 
@@ -745,6 +769,10 @@ void dashboard_create(void) {
 
   /* Apply theme to all created components */
   dashboard_apply_theme();
+
+  /* Start in parking mode, exit after 5 seconds */
+  parking_mode = true;
+  lv_timer_create(exit_parking_mode_cb, 5000, NULL);
 
   lv_timer_create(change_theme_timer_cb, 10000, NULL);
   lv_timer_create(meter_anim_timer_cb, 50, NULL);
