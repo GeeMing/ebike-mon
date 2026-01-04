@@ -15,6 +15,9 @@ if(USE_FREERTOS)
     message(STATUS "FreeRTOS is enabled")
 
     # FreeRTOS integration when USE_FREERTOS is enabled
+    # Set FREERTOS_CONFIG_FILE_DIRECTORY for FreeRTOS V10.5.1 compatibility
+    set(FREERTOS_CONFIG_FILE_DIRECTORY ${PROJECT_SOURCE_DIR}/config CACHE STRING "Absolute path to the directory with FreeRTOSConfig.h")
+
     add_library(freertos_config INTERFACE)
     target_include_directories(freertos_config SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/config)
     target_compile_definitions(freertos_config INTERFACE projCOVERAGE_TEST=0)
