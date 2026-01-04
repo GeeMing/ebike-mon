@@ -5,7 +5,9 @@ cmake -S . -B _build  -G "MinGW Makefiles"  \
     -DVCPKG_TARGET_TRIPLET="x64-mingw-dynamic" \
     -DUSE_FREERTOS=ON \
     -DLV_BUILD_USE_KCONFIG=ON \
-    -DLV_BUILD_DEFCONFIG_PATH="config/lvgl.config"
+    -DLV_BUILD_DEFCONFIG_PATH="config/lvgl.config" \
+    -DCONFIG_LV_BUILD_EXAMPLES=OFF \
+    -DCONFIG_LV_BUILD_DEMOS=OFF
 
 
 # vcpkg 安装sdl

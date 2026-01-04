@@ -42,7 +42,7 @@ else()
 endif()
 
 # Main include files of the project
-include_directories(${PROJECT_SOURCE_DIR}/main/inc)
+include_directories(${PROJECT_SOURCE_DIR}/app)
 
 # Define options for LVGL with default values (OFF)
 option(LV_USE_DRAW_SDL "Use SDL draw unit" OFF)
@@ -76,22 +76,36 @@ target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR} ${SDL2_INCLUDE_DIRS
 # Collect source files using file(GLOB)
 # Exclude main.c and freertos_main.c as they are conditionally added later
 file(GLOB MAIN_SOURCES
+    "${PROJECT_SOURCE_DIR}/app/*.c"
     "${PROJECT_SOURCE_DIR}/src/*.c"
     "${PROJECT_SOURCE_DIR}/src/hal/*.c"
     "${PROJECT_SOURCE_DIR}/fonts/out/*.c"
     "${PROJECT_SOURCE_DIR}/img/*.c"
 )
-# Remove main.c and freertos_main.c from glob results (they're added conditionally)
-list(REMOVE_ITEM MAIN_SOURCES
-    "${PROJECT_SOURCE_DIR}/src/main.c"
-    "${PROJECT_SOURCE_DIR}/src/freertos_main.c"
-)
+
 # Use SDL2 directly, without SDL2main (we handle main ourselves)
+# Build MAIN_LIBS list conditionally based on configuration
+set(MAIN_LIBS lvgl)
+
+# Add examples library only if enabled
+if(CONFIG_LV_BUILD_EXAMPLES)
+    list(APPEND MAIN_LIBS lvgl::examples)
+endif()
+
+# Add demos library only if enabled
+if(CONFIG_LV_BUILD_DEMOS)
+    list(APPEND MAIN_LIBS lvgl::demos)
+endif()
+
+# Add thorvg library
+list(APPEND MAIN_LIBS lvgl::thorvg)
+
+# Add SDL2 library
 if(USE_FREERTOS)
     # For FreeRTOS mode, we use SDL_MAIN_HANDLED so don't need SDL2main
-    set(MAIN_LIBS lvgl lvgl::examples lvgl::demos lvgl::thorvg SDL2::SDL2)
+    list(APPEND MAIN_LIBS SDL2::SDL2)
 else()
-    set(MAIN_LIBS lvgl lvgl::examples lvgl::demos lvgl::thorvg ${SDL2_LIBRARIES})
+    list(APPEND MAIN_LIBS ${SDL2_LIBRARIES})
 endif()
 
 # Create the main executable, depending on the FreeRTOS option
@@ -100,8 +114,6 @@ if(USE_FREERTOS)
     list(REMOVE_ITEM MAIN_SOURCES "${PROJECT_SOURCE_DIR}/src/lv_os_stub.c")
     list(APPEND MAIN_SOURCES src/freertos_main.c ${FREERTOS_SOURCES})
     list(APPEND MAIN_LIBS freertos_config freertos_kernel winmm)
-else()
-    list(APPEND MAIN_SOURCES src/main.c)
 endif()
 
 
