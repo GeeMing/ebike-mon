@@ -7,6 +7,7 @@
  */
 
 #include "lvgl/lvgl.h"
+#include "lvgl/lv_version.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -15,6 +16,7 @@
 
 #include "hal/hal.h"
 #include <stdio.h>
+#include <string.h>
 #include <SDL.h>
 
 // ........................................................................................................
@@ -170,6 +172,25 @@ int main(int argc, char **argv)
 {
     LV_UNUSED(argc);
     LV_UNUSED(argv);
+
+    /* Print version information */
+    printf("========================================\n");
+    printf("E-Bike Monitor System\n");
+    printf("========================================\n");
+    printf("LVGL Version: %d.%d.%d",
+           LVGL_VERSION_MAJOR,
+           LVGL_VERSION_MINOR,
+           LVGL_VERSION_PATCH);
+    if (LVGL_VERSION_INFO[0] != '\0') {
+        printf(" (%s)", LVGL_VERSION_INFO);
+    }
+    printf("\n");
+    printf("FreeRTOS Kernel: %s", tskKERNEL_VERSION_NUMBER);
+    if (tskKERNEL_VERSION_NUMBER[strlen(tskKERNEL_VERSION_NUMBER) - 1] == '+') {
+        printf(" (Development Branch)");
+    }
+    printf("\n");
+    printf("========================================\n\n");
 
     /* Tell SDL we will handle the main function ourselves */
     SDL_SetMainReady();
