@@ -76,6 +76,11 @@ static lv_obj_t *meter_needle_line;
 static lv_obj_t *meter_center_label;
 static lv_obj_t *meter_unit_label;
 
+/* Gear indicator (below meter) */
+static lv_obj_t *gear_box;
+static lv_obj_t *gear_label;
+static int current_gear = 1;
+
 /* Meter section styles (must be static/global for LVGL) */
 static lv_style_t meter_blue_style;
 static lv_style_t meter_red_style;
@@ -171,6 +176,14 @@ static void dashboard_apply_theme(void) {
   lv_obj_set_style_line_color(meter_widget, theme_line, LV_PART_INDICATOR);
   lv_obj_set_style_text_color(meter_widget, theme_text_dim, LV_PART_MAIN);
   lv_obj_set_style_line_color(meter_needle_line, theme_needle, LV_PART_MAIN);
+
+  /* Gear indicator */
+  if (gear_box) {
+    lv_obj_set_style_border_color(gear_box, theme_border, 0);
+  }
+  if (gear_label) {
+    lv_obj_set_style_text_color(gear_label, theme_text_main, 0);
+  }
 }
 
 void dashboard_set_night_mode(bool enable) {
@@ -568,6 +581,35 @@ void draw_meter(lv_obj_t *scr) {
   /* Save references for animation */
   meter_widget = meter;
   meter_needle_line = needle_line;
+
+  /* Create gear indicator below the meter */
+  gear_box = lv_obj_create(scr);
+  lv_obj_set_size(gear_box, 26, 26);
+  lv_obj_align(gear_box, LV_ALIGN_CENTER, 0, 60);  /* Below the meter */
+  lv_obj_set_style_bg_opa(gear_box, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(gear_box, 1, 0);
+  lv_obj_set_style_border_color(gear_box, theme_border, 0);
+  lv_obj_set_style_radius(gear_box, 4, 0);
+  lv_obj_clear_flag(gear_box, LV_OBJ_FLAG_SCROLLABLE);
+
+  gear_label = lv_label_create(gear_box);
+  lv_label_set_text(gear_label, "1");
+  lv_obj_center(gear_label);
+  lv_obj_set_style_text_font(gear_label, &lv_font_montserrat_20, 0);
+  lv_obj_set_style_text_color(gear_label, theme_text_main, 0);
+}
+
+/* Set gear value (1, 2, or 3) */
+void dashboard_set_gear(int gear) {
+  if (gear < 1) gear = 1;
+  if (gear > 3) gear = 3;
+  current_gear = gear;
+
+  if (gear_label) {
+    char buf[4];
+    snprintf(buf, sizeof(buf), "%d", gear);
+    lv_label_set_text(gear_label, buf);
+  }
 }
 
 void change_theme_timer_cb(lv_timer_t *t) {
@@ -748,6 +790,13 @@ void test_value_timer_cb(lv_timer_t *t) {
   lv_label_set_text(right_batt_cap_value, buf);
 }
 
+void test_gear_timer_cb(lv_timer_t *t) {
+  static int gear = 1;
+  gear++;
+  if (gear > 3) gear = 1;
+  dashboard_set_gear(gear);
+}
+
 void dashboard_create(void) {
   /* Create a clean screen */
   scr_root = lv_obj_create(NULL);
@@ -779,4 +828,5 @@ void dashboard_create(void) {
   lv_timer_create(update_icons_timer_cb, 500, NULL);
   lv_timer_create(energy_anim_timer_cb, 100, NULL);
   lv_timer_create(test_value_timer_cb, 100, NULL);
+  lv_timer_create(test_gear_timer_cb, 1000, NULL);
 }
