@@ -1,6 +1,9 @@
  cmake_minimum_required(VERSION 3.12.4)
 project(lvgl C CXX)
 
+# Set the project root directory (parent of simulator directory)
+get_filename_component(PROJECT_ROOT_DIR "${CMAKE_SOURCE_DIR}" DIRECTORY)
+
 # Set the correct FreeRTOS port for your system
 # Use MSVC-MingW for Windows/MinGW, GCC_POSIX for Linux/WSL
 set(FREERTOS_PORT MSVC_MINGW CACHE STRING "Port for FreeRTOS")
@@ -42,7 +45,7 @@ else()
 endif()
 
 # Main include files of the project
-include_directories(${PROJECT_SOURCE_DIR}/app)
+include_directories(${PROJECT_ROOT_DIR}/app)
 
 # Define options for LVGL with default values (OFF)
 option(LV_USE_DRAW_SDL "Use SDL draw unit" OFF)
@@ -76,11 +79,11 @@ target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR} ${SDL2_INCLUDE_DIRS
 # Collect source files using file(GLOB)
 # Exclude main.c and freertos_main.c as they are conditionally added later
 file(GLOB MAIN_SOURCES
-    "${PROJECT_SOURCE_DIR}/app/*.c"
+    "${PROJECT_ROOT_DIR}/app/*.c"
     "${PROJECT_SOURCE_DIR}/src/*.c"
     "${PROJECT_SOURCE_DIR}/src/hal/*.c"
-    "${PROJECT_SOURCE_DIR}/fonts/out/*.c"
-    "${PROJECT_SOURCE_DIR}/img/*.c"
+    "${PROJECT_ROOT_DIR}/fonts/out/*.c"
+    "${PROJECT_ROOT_DIR}/img/*.c"
 )
 
 # Use SDL2 directly, without SDL2main (we handle main ourselves)
