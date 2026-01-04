@@ -11,3 +11,4 @@ bin/
 # MacOS file
 .DS_Store
 _build/
+*.old
