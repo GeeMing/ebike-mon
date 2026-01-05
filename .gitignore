@@ -1,3 +1,4 @@
+
 # Ignore build folder
 build/
 bin/
@@ -12,3 +13,5 @@ bin/
 .DS_Store
 _build/
 *.old
+
+managed_components/

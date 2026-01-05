@@ -77,7 +77,6 @@ add_subdirectory(lvgl)
 target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR} ${SDL2_INCLUDE_DIRS})
 
 # Collect source files using file(GLOB)
-# Exclude main.c and freertos_main.c as they are conditionally added later
 file(GLOB MAIN_SOURCES
     "${PROJECT_ROOT_DIR}/app/*.c"
     "${PROJECT_SOURCE_DIR}/src/*.c"
@@ -115,7 +114,7 @@ endif()
 if(USE_FREERTOS)
     # Remove lv_os_stub.c when using FreeRTOS (LVGL provides lv_os_get_idle_percent)
     list(REMOVE_ITEM MAIN_SOURCES "${PROJECT_SOURCE_DIR}/src/lv_os_stub.c")
-    list(APPEND MAIN_SOURCES src/freertos_main.c ${FREERTOS_SOURCES})
+    list(APPEND MAIN_SOURCES src/simulator_main.c ${FREERTOS_SOURCES})
     list(APPEND MAIN_LIBS freertos_config freertos_kernel winmm)
 endif()
 
