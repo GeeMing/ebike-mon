@@ -1,17 +1,8 @@
 /*
  * LVGL 图标资源文件
- * 此文件由 make_icons.py 自动生成，请勿手动编辑
+ * 此文件由 make-icons.py 自动生成，请勿手动编辑
  */
-
-#if defined(LV_LVGL_H_INCLUDE_SIMPLE)
 #include "lvgl.h"
-#elif defined(LV_LVGL_H_INCLUDE_SYSTEM)
-#include <lvgl.h>
-#elif defined(LV_BUILD_TEST)
-#include "../lvgl.h"
-#else
-#include "lvgl/lvgl.h"
-#endif
 
 #ifndef LV_ATTRIBUTE_MEM_ALIGN
 #define LV_ATTRIBUTE_MEM_ALIGN

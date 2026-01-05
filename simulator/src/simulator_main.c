@@ -6,41 +6,40 @@
  * @license MIT License
  */
 
-#include "lvgl/lvgl.h"
 #include "lvgl/lv_version.h"
+#include "lvgl/lvgl.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 
-#if LV_USE_OS == LV_OS_FREERTOS
-
 #include "hal/hal.h"
+#include <SDL.h>
 #include <stdio.h>
 #include <string.h>
-#include <SDL.h>
 
 // ........................................................................................................
 /**
  * @brief   Malloc failed hook
  *
- * This function is called when a memory allocation (malloc) fails. It logs the available heap size and enters
- * an infinite loop to halt the system.
+ * This function is called when a memory allocation (malloc) fails. It logs the
+ * available heap size and enters an infinite loop to halt the system.
  *
  * @param   None
  * @return  None
  */
-void vApplicationMallocFailedHook(void)
-{
-    printf("Malloc failed! Available heap: %ld bytes\n", xPortGetFreeHeapSize());
-    for( ;; );
+void vApplicationMallocFailedHook(void) {
+  printf("Malloc failed! Available heap: %ld bytes\n", xPortGetFreeHeapSize());
+  for (;;)
+    ;
 }
 
 // ........................................................................................................
 /**
  * @brief   Idle hook
  *
- * This function is called when the system is idle. It can be used for low-power mode operations or other
- * maintenance tasks that need to run when the CPU is not busy.
+ * This function is called when the system is idle. It can be used for low-power
+ * mode operations or other maintenance tasks that need to run when the CPU is
+ * not busy.
  *
  * @param   None
  * @return  None
@@ -51,25 +50,25 @@ void vApplicationIdleHook(void) {}
 /**
  * @brief   Stack overflow hook
  *
- * This function is called when a stack overflow is detected in a task. It logs the task name and enters
- * an infinite loop to halt the system.
+ * This function is called when a stack overflow is detected in a task. It logs
+ * the task name and enters an infinite loop to halt the system.
  *
  * @param   xTask        Handle of the task that caused the stack overflow
  * @param   pcTaskName   Name of the task that caused the stack overflow
  * @return  None
  */
-void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
-{
-    printf("Stack overflow in task %s\n", pcTaskName);
-    for(;;);
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
+  printf("Stack overflow in task %s\n", pcTaskName);
+  for (;;)
+    ;
 }
 
 // ........................................................................................................
 /**
  * @brief   Tick hook
  *
- * This function is called on each tick interrupt. It can be used to execute periodic operations
- * that need to occur at a fixed time interval.
+ * This function is called on each tick interrupt. It can be used to execute
+ * periodic operations that need to occur at a fixed time interval.
  *
  * @param   None
  * @return  None
@@ -80,65 +79,71 @@ void vApplicationTickHook(void) {}
 /**
  * @brief   Create Hello World screen
  *
- * This function creates a simple LVGL screen with a "Hello, World!" label centered on the screen.
+ * This function creates a simple LVGL screen with a "Hello, World!" label
+ * centered on the screen.
  *
  * @param   None
  * @return  None
  */
-void create_hello_world_screen()
-{
-    /* Create a new screen object */
-    lv_obj_t *screen = lv_obj_create(NULL);
-    if (screen == NULL){
-        printf("Error: Failed to create screen object\n");
-        /* Return if screen creation fails */
-        return;
-    }
+void create_hello_world_screen() {
+  /* Create a new screen object */
+  lv_obj_t *screen = lv_obj_create(NULL);
+  if (screen == NULL) {
+    printf("Error: Failed to create screen object\n");
+    /* Return if screen creation fails */
+    return;
+  }
 
-    /* Create a new label object on the screen */
-    lv_obj_t *label = lv_label_create(screen);
-    if (label == NULL){
-        printf("Error: Failed to create label object\n");
-        /* Return if label creation fails */
-        return;
-    }
+  /* Create a new label object on the screen */
+  lv_obj_t *label = lv_label_create(screen);
+  if (label == NULL) {
+    printf("Error: Failed to create label object\n");
+    /* Return if label creation fails */
+    return;
+  }
 
-    /* Set the text of the label to "Hello, World!" */
-    lv_label_set_text(label, "Hello, World!");
+  /* Set the text of the label to "Hello, World!" */
+  lv_label_set_text(label, "Hello, World!");
 
-    /* Align the label to the center of the screen */
-    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+  /* Align the label to the center of the screen */
+  lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
 
-    /* Load the created screen and make it visible */
-    lv_scr_load(screen);
+  /* Load the created screen and make it visible */
+  lv_scr_load(screen);
 }
 
 // ........................................................................................................
 /**
  * @brief   LVGL task
  *
- * This task initializes LVGL and runs the main loop, periodically calling the LVGL task handler.
- * It is responsible for managing the LVGL state and rendering updates.
+ * This task initializes LVGL and runs the main loop, periodically calling the
+ * LVGL task handler. It is responsible for managing the LVGL state and
+ * rendering updates.
  *
  * @param   pvParameters   Task parameters (not used in this example)
  * @return  None
  */
-void lvgl_task(void *pvParameters)
-{
 
-    /*Initialize LVGL*/
-    lv_init();
+#include "dashboard.h"
 
-    /*Initialize the HAL (display, input devices, tick) for LVGL*/
-    sdl_hal_init(480, 272);
-    /* Show the e-bike dashboard screen */
-    #include "dashboard.h"
-    dashboard_create();
+void lvgl_task(void *pvParameters) {
 
-    while (true){
-        lv_timer_handler(); /* Handle LVGL tasks */
-        vTaskDelay(pdMS_TO_TICKS(5)); /* Short delay for the RTOS scheduler */
-    }
+  /*Initialize LVGL*/
+  lv_init();
+
+  /*Initialize the HAL (display, input devices, tick) for LVGL*/
+  sdl_hal_init(480, 272);
+  /* Show the e-bike dashboard screen */
+  /* Create a clean screen */
+  lv_obj_t *scr_root = lv_obj_create(NULL);
+  lv_scr_load(scr_root);
+
+  dashboard_create(scr_root);
+
+  while (true) {
+    lv_timer_handler();           /* Handle LVGL tasks */
+    vTaskDelay(pdMS_TO_TICKS(5)); /* Short delay for the RTOS scheduler */
+  }
 }
 
 // ........................................................................................................
@@ -150,67 +155,64 @@ void lvgl_task(void *pvParameters)
  * @param   pvParameters   Task parameters (not used in this example)
  * @return  None
  */
-void another_task(void *pvParameters)
-{
-    /* Background task - runs at low priority */
-    while (true){
-        /* Delay the task for 1 second */
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
+void another_task(void *pvParameters) {
+  /* Background task - runs at low priority */
+  while (true) {
+    /* Delay the task for 1 second */
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
 }
 
 // ........................................................................................................
 /**
  * @brief   FreeRTOS main function
  *
- * This function sets up and starts the FreeRTOS tasks, including the LVGL task and another demo task.
+ * This function sets up and starts the FreeRTOS tasks, including the LVGL task
+ * and another demo task.
  *
  * @param   None
  * @return  None
  */
-int main(int argc, char **argv)
-{
-    LV_UNUSED(argc);
-    LV_UNUSED(argv);
+int main(int argc, char **argv) {
+  LV_UNUSED(argc);
+  LV_UNUSED(argv);
 
-    /* Print version information */
-    printf("========================================\n");
-    printf("E-Bike Monitor System\n");
-    printf("========================================\n");
-    printf("LVGL Version: %d.%d.%d",
-           LVGL_VERSION_MAJOR,
-           LVGL_VERSION_MINOR,
-           LVGL_VERSION_PATCH);
-    if (LVGL_VERSION_INFO[0] != '\0') {
-        printf(" (%s)", LVGL_VERSION_INFO);
-    }
-    printf("\n");
-    printf("FreeRTOS Kernel: %s", tskKERNEL_VERSION_NUMBER);
-    if (tskKERNEL_VERSION_NUMBER[strlen(tskKERNEL_VERSION_NUMBER) - 1] == '+') {
-        printf(" (Development Branch)");
-    }
-    printf("\n");
-    printf("========================================\n\n");
+  /* Print version information */
+  printf("========================================\n");
+  printf("E-Bike Monitor System\n");
+  printf("========================================\n");
+  printf("LVGL Version: %d.%d.%d", LVGL_VERSION_MAJOR, LVGL_VERSION_MINOR,
+         LVGL_VERSION_PATCH);
+  if (LVGL_VERSION_INFO[0] != '\0') {
+    printf(" (%s)", LVGL_VERSION_INFO);
+  }
+  printf("\n");
+  printf("FreeRTOS Kernel: %s", tskKERNEL_VERSION_NUMBER);
+  if (tskKERNEL_VERSION_NUMBER[strlen(tskKERNEL_VERSION_NUMBER) - 1] == '+') {
+    printf(" (Development Branch)");
+  }
+  printf("\n");
+  printf("========================================\n\n");
 
-    /* Tell SDL we will handle the main function ourselves */
-    SDL_SetMainReady();
+  /* Tell SDL we will handle the main function ourselves */
+  SDL_SetMainReady();
 
-    /* Initialize LVGL (Light and Versatile Graphics Library) and other resources */
+  /* Initialize LVGL (Light and Versatile Graphics Library) and other resources
+   */
 
-    /* Create the LVGL task with higher priority */
-    if (xTaskCreate(lvgl_task, "LVGL Task", 4096, NULL, 3, NULL) != pdPASS) {
-        printf("Error creating LVGL task\n");
-        /* Error handling */
-    }
+  /* Create the LVGL task with higher priority */
+  if (xTaskCreate(lvgl_task, "LVGL Task", 4096, NULL, 3, NULL) != pdPASS) {
+    printf("Error creating LVGL task\n");
+    /* Error handling */
+  }
 
-    /* Create another task with lower priority */
-    if (xTaskCreate(another_task, "Another Task", 1024, NULL, 1, NULL) != pdPASS) {
-        printf("Error creating another task\n");
-        /* Error handling */
-    }
+  /* Create another task with lower priority */
+  if (xTaskCreate(another_task, "Another Task", 1024, NULL, 1, NULL) !=
+      pdPASS) {
+    printf("Error creating another task\n");
+    /* Error handling */
+  }
 
-    /* Start the scheduler */
-    vTaskStartScheduler();
+  /* Start the scheduler */
+  vTaskStartScheduler();
 }
-
-#endif

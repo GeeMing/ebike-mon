@@ -8,10 +8,14 @@
 
 static lv_style_t style_bullet;
 static lv_obj_t *scale1;
-static const lv_font_t *font_normal = &lv_font_montserrat_14;
 
 static lv_obj_t *create_scale_box(lv_obj_t *parent, const char *text1, const char *text2, const char *text3)
 {
+        // bullet style
+    lv_style_init(&style_bullet);
+    lv_style_set_border_width(&style_bullet, 0);
+    lv_style_set_radius(&style_bullet, LV_RADIUS_CIRCLE);
+
     lv_obj_t *scale = lv_scale_create(parent);
     lv_obj_center(scale);
     lv_obj_set_size(scale, 300, 300);
@@ -85,19 +89,8 @@ static void scale1_indic3_anim_cb(void *var, int32_t v)
     lv_label_set_text_fmt(label, "Costs: %"LV_PRId32" %%", v);
 }
 
-void example_lvgl_demo_ui(lv_display_t *disp)
-{
-    // init default theme
-    lv_theme_default_init(disp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED), LV_THEME_DEFAULT_DARK,
-                          font_normal);
-    // bullet style
-    lv_style_init(&style_bullet);
-    lv_style_set_border_width(&style_bullet, 0);
-    lv_style_set_radius(&style_bullet, LV_RADIUS_CIRCLE);
-
-    lv_obj_t *parent = lv_display_get_screen_active(disp);
-
-    // create scale widget
+void example_lvgl_demo_ui(lv_obj_t *parent)
+{    // create scale widget
     scale1 = create_scale_box(parent, "Revenue", "Sales", "Costs");
 
     // create arc indicators

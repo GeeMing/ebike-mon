@@ -191,17 +191,6 @@ void dashboard_set_night_mode(bool enable) {
   dashboard_apply_theme();
 }
 
-/* Simple helper to create a small colored circle used for indicators */
-static lv_obj_t *create_circle(lv_obj_t *parent, lv_color_t color,
-                               lv_coord_t size) {
-  lv_obj_t *obj = lv_obj_create(parent);
-  lv_obj_set_size(obj, size, size);
-  lv_obj_set_style_radius(obj, LV_RADIUS_CIRCLE, 0);
-  lv_obj_set_style_bg_color(obj, color, 0);
-  lv_obj_set_style_border_width(obj, 0, 0);
-  return obj;
-}
-
 static void time_timer_cb(lv_timer_t *t) {
   time_t now = time(NULL);
   struct tm *tm_now = localtime(&now);
@@ -338,7 +327,7 @@ static void draw_energy_bar(lv_obj_t *scr) {
   const int zero_line_x =
       ENERGY_BAR_W * (-ENERGY_MIN_W) / (ENERGY_MAX_W + (-ENERGY_MIN_W));
   const int left_size = zero_line_x;
-  const int right_size = ENERGY_BAR_W - left_size;
+  // const int right_size = ENERGY_BAR_W - left_size;
 
   /* Container: transparent background with border only */
   energy_bar_cont = lv_obj_create(scr);
@@ -633,11 +622,11 @@ static void exit_parking_mode_cb(lv_timer_t *t) {
 
 /* Animation timer: sweep meter needle from 0 to 80 and back */
 static void meter_anim_timer_cb(lv_timer_t *t) {
-  static int32_t v = 0;
+  static int v = 0;
   static int dir = 1; /* 1: up, -1: down */
-  const int32_t min_v = 0;
-  const int32_t max_v = 80;
-  const int32_t step = 1; /* change per tick */
+  const int min_v = 0;
+  const int max_v = 80;
+  const int step = 1; /* change per tick */
 
   if (!meter_widget || !meter_needle_line) {
     return;
@@ -797,10 +786,7 @@ void test_gear_timer_cb(lv_timer_t *t) {
   dashboard_set_gear(gear);
 }
 
-void dashboard_create(void) {
-  /* Create a clean screen */
-  scr_root = lv_obj_create(NULL);
-  lv_scr_load(scr_root);
+void dashboard_create(lv_obj_t * scr_root) {
   lv_obj_set_scrollbar_mode(scr_root, LV_SCROLLBAR_MODE_OFF);
   lv_obj_set_style_bg_opa(scr_root, LV_OPA_COVER, 0);
 

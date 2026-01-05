@@ -4,17 +4,17 @@ LVGL 图标生成脚本
 用于将 img 目录下的 PNG 图片转换为 icons.c 和 icons.h 文件
 
 使用方法:
-    python3 make_icons.py [选项]
+    python3 make-icons.py [选项]
 
 示例:
     # 使用默认参数 (ARGB8888, 无压缩)
-    python3 make_icons.py
+    python3 make-icons.py
 
     # 使用 RGB565 格式，LZ4 压缩
-    python3 make_icons.py --cf RGB565 --compress LZ4
+    python3 make-icons.py --cf RGB565 --compress LZ4
 
     # 指定输出文件路径
-    python3 make_icons.py --output-c ../src/icons.c --output-h ../src/icons.h
+    python3 make-icons.py --output-c ../src/icons.c --output-h ../src/icons.h
 
 依赖:
     需要安装以下 Python 包:
@@ -27,9 +27,9 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
-# 添加 lvgl/scripts 目录到路径，以便导入 LVGLImage
+# 添加 simulator/lvgl/scripts 目录到路径，以便导入 LVGLImage
 script_dir = Path(__file__).parent
-lvgl_scripts_dir = script_dir.parent / "lvgl" / "scripts"
+lvgl_scripts_dir = script_dir.parent / "simulator" / "lvgl" / "scripts"
 sys.path.insert(0, str(lvgl_scripts_dir))
 
 try:
@@ -39,7 +39,7 @@ try:
     )
 except ImportError as e:
     print(f"错误: 无法导入 LVGLImage 模块: {e}")
-    print("请确保 lvgl/scripts/LVGLImage.py 存在")
+    print("请确保 simulator/lvgl/scripts/LVGLImage.py 存在")
     sys.exit(1)
 
 
@@ -166,18 +166,9 @@ class IconsGenerator:
             # 写入文件头
             f.write("""/*
  * LVGL 图标资源文件
- * 此文件由 make_icons.py 自动生成，请勿手动编辑
+ * 此文件由 make-icons.py 自动生成，请勿手动编辑
  */
-
-#if defined(LV_LVGL_H_INCLUDE_SIMPLE)
 #include "lvgl.h"
-#elif defined(LV_LVGL_H_INCLUDE_SYSTEM)
-#include <lvgl.h>
-#elif defined(LV_BUILD_TEST)
-#include "../lvgl.h"
-#else
-#include "lvgl/lvgl.h"
-#endif
 
 #ifndef LV_ATTRIBUTE_MEM_ALIGN
 #define LV_ATTRIBUTE_MEM_ALIGN
@@ -251,27 +242,8 @@ class IconsGenerator:
         print(f"生成 H 文件: {self.output_h}")
 
         with open(self.output_h, 'w', encoding='utf-8') as f:
-            # 写入文件头
-            guard_name = "ICONS_H"
-            f.write(f"""/*
- * LVGL 图标资源头文件
- * 此文件由 make_icons.py 自动生成，请勿手动编辑
- */
-
-#ifndef {guard_name}
-#define {guard_name}
-
-#if defined(LV_LVGL_H_INCLUDE_SIMPLE)
-#include "lvgl.h"
-#elif defined(LV_LVGL_H_INCLUDE_SYSTEM)
-#include <lvgl.h>
-#elif defined(LV_BUILD_TEST)
-#include "../lvgl.h"
-#else
-#include "lvgl/lvgl.h"
-#endif
-
-""")
+            f.write('#pragma once\n')
+            f.write('#include "lvgl.h"\n\n')
 
             # 写入每个图片的声明（去重）
             seen = set()
@@ -279,8 +251,6 @@ class IconsGenerator:
                 if varname not in seen:
                     f.write(f"LV_IMAGE_DECLARE({varname});\n")
                     seen.add(varname)
-
-            f.write(f"\n#endif /* {guard_name} */\n")
 
     def generate(self):
         """生成所有文件"""
