@@ -786,7 +786,8 @@ void test_gear_timer_cb(lv_timer_t *t) {
   dashboard_set_gear(gear);
 }
 
-void dashboard_create(lv_obj_t * scr_root) {
+void dashboard_create(lv_obj_t *scr) {
+  scr_root = scr;
   lv_obj_set_scrollbar_mode(scr_root, LV_SCROLLBAR_MODE_OFF);
   lv_obj_set_style_bg_opa(scr_root, LV_OPA_COVER, 0);
 
